@@ -60,6 +60,15 @@ OPENAI_MODEL=gpt-4o-mini
 6. Configure the site URL and redirect URL, for example:
    - `http://localhost:3000/auth/callback`
    - your Vercel production callback URL
+7. Copy the branded auth templates from `supabase/email-templates/` into the matching Supabase Auth email templates.
+
+Recommended auth sender:
+
+```text
+ListingFlow AI <no-reply@auth.meademarklabs.com>
+```
+
+Use custom SMTP with SPF, DKIM, and DMARC before production auth emails.
 
 ## Database Schema
 

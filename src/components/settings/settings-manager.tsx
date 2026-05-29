@@ -135,6 +135,12 @@ export function SettingsManager({
             <TabsTrigger value="experience">Features</TabsTrigger>
           </TabsList>
           <TabsContent value="account" className="pt-5">
+            <div className="mb-5 rounded-lg border border-white/10 bg-white/[.035] p-4">
+              <h3 className="font-display text-2xl">Account Settings</h3>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Manage your name and login email. ListingFlow does not use profile pictures, keeping dealership accounts simple and work-focused.
+              </p>
+            </div>
             <form action={saveAccount} className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Full name</Label>
