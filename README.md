@@ -1,36 +1,181 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ListingFlow AI
 
-## Getting Started
+ListingFlow AI by MeadeMark Labs is a B2B SaaS MVP for dealerships that need clean, accurate, dealer-ready vehicle listings. It helps staff turn VINs, decoded vehicle details, condition notes, selling points, and dealership style preferences into platform-ready copy while keeping humans in control.
 
-First, run the development server:
+The MVP includes account auth, dealership workspaces, onboarding, style learning, listing generation, saved listings, team invites, join requests, trial generation limits, rate limiting, and demo billing controls.
+
+Recent operations features include bulk inventory intake, approval statuses, claim risk auditing, feature event tracking, audit history, dealership analytics, founder admin visibility, VIN/feature search, and vehicle image URL tracking.
+
+## Tech Stack
+
+- Next.js App Router
+- TypeScript
+- Tailwind CSS
+- shadcn/ui
+- lucide-react icons
+- framer-motion
+- Supabase Auth and Postgres
+- OpenAI API for style analysis, input sanity checks, and listing generation
+- Vercel-ready deployment
+
+## Environment Variables
+
+Create `.env.local`:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+OPENAI_API_KEY=
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+LISTINGFLOW_ADMIN_EMAILS=
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`SUPABASE_SERVICE_ROLE_KEY` is used only in secure server contexts for rate limiting and public early access inserts. Do not expose it to the browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+`LISTINGFLOW_ADMIN_EMAILS` is a server-only comma-separated list of founder/admin emails that can access `/dashboard/admin`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Optional:
 
-## Learn More
+```bash
+OPENAI_MODEL=gpt-4o-mini
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Supabase Setup
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Create a Supabase project.
+2. Copy the URL and anon key into `.env.local`.
+3. Copy the service role key into `.env.local`.
+4. Run the SQL migrations in order from `supabase/migrations/`.
+   - Fresh setup: run `0001`, then `0002`, then `0003`.
+   - Existing setup that already ran the first migration: run the newer migration files you have not applied yet.
+5. Enable email/password authentication in Supabase Auth.
+6. Configure the site URL and redirect URL, for example:
+   - `http://localhost:3000/auth/callback`
+   - your Vercel production callback URL
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Database Schema
 
-## Deploy on Vercel
+The migration creates:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `profiles`
+- `dealerships`
+- `dealership_members`
+- `dealership_invites`
+- `join_requests`
+- `dealership_style_profiles`
+- `style_examples`
+- `generation_usage`
+- `listings`
+- `early_access_leads`
+- `rate_limits`
+- `feature_events`
+- `audit_logs`
+- `listing_quality_reports`
+- `bulk_inventory_batches`
+- `bulk_inventory_items`
+- `listing_images`
+- `app_admins`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Helper functions:
+
+- `is_dealership_member(user_id, dealership_id)`
+- `has_dealership_role(user_id, dealership_id, roles)`
+
+## RLS Summary
+
+Row Level Security is enabled for all app tables. Members can access listings, usage, style profiles, style examples, and team data for their dealership. Owner/admin roles can manage invites, join requests, dealership settings, style profiles, and listing deletion. Staff can generate and save listings but cannot manage billing or team settings.
+
+Dealership rows are selectable by authenticated users so new users can request to join a dealership during onboarding. Sensitive operational data remains protected through the member-scoped tables.
+
+## OpenAI Setup
+
+All OpenAI calls run server-side only:
+
+- `POST /api/style/analyze`
+- `POST /api/generate-listing`
+- internal `analyzeVehicleInputQuality(input)`
+
+The generation prompt instructs the model not to invent specs, warranty, title status, accident history, ownership history, service history, financing terms, or condition claims. Human review is recommended before publishing listings.
+
+## Local Development
+
+```bash
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+Useful checks:
+
+```bash
+npm run lint
+npm run build
+```
+
+## Vercel Deployment
+
+1. Push the repository to GitHub.
+2. Import the project into Vercel.
+3. Add the environment variables in Vercel Project Settings.
+4. Add the Vercel deployment URL to Supabase Auth redirect URLs.
+5. Deploy.
+
+The app is Vercel-ready and uses Next.js route handlers for server-only API behavior.
+
+## Trial And Rate Limits
+
+Free trial = 35 generations per month per dealership.
+
+Plan limits:
+
+- `trial`: 35/month
+- `starter_demo`: 150/month
+- `pro_demo`: 500/month
+- `unlimited_demo`: unlimited test generations
+
+Route limits:
+
+- `/api/generate-listing`: 10 requests per user per 10 minutes, plus monthly dealership plan limits
+- `/api/style/analyze`: 5 requests per user per 30 minutes
+- `/api/invites/create`: 10 invites per dealership per day
+- `/api/early-access`: 5 submissions per IP per hour, falling back to email
+
+## Fake Billing
+
+Billing is demo/test functionality only. No real payments are processed. Stripe is not implemented yet. Demo billing exists only to test plan gating, generation limits, and subscription-state behavior before real billing is added.
+
+The Billing page can toggle:
+
+- Starter Demo
+- Pro Demo
+- Unlimited Demo
+- Free Trial
+
+Replace this with Stripe before real customer billing.
+
+## VIN Decoding
+
+ListingFlow includes server-side VIN decoding through the public NHTSA VPIC API. A valid 17-character VIN can prefill available baseline fields such as year, make, model, trim/series, body class, drivetrain, transmission, engine, and fuel type.
+
+The app also uses free NHTSA recall and NCAP safety-rating endpoints when year, make, and model are available. The results are summarized by `gpt-4o-mini` with strict instructions to validate only the sourced data, then cached in `vehicle_model_intelligence` by year/make/model/trim so repeated models do not need repeated research.
+
+VIN decoding is a starting point, not an autopilot. Dealership staff must confirm decoded details before generation and should still add mileage, condition, title status, accident history, warranty or financing information, selling points, price, photos, and internal notes. ListingFlow does not invent missing specs or claims from a VIN. Title status is manual/staff-entered unless a trusted paid NMVTIS/history provider is added later.
+
+## Images
+
+Vehicle image handling is limited to tracking image URLs and photo notes against saved listings. AI photo decoding and real storage uploads are intentionally held for a later integration.
+
+## Operations Features
+
+- Bulk inventory intake accepts CSV/spreadsheet rows and saves validated intake batches.
+- Claim Risk Auditor flags unsupported claims such as clean title, no accidents, one-owner, warranty, financing, service history, and absolute condition language.
+- Approval statuses include draft, pending review, changes requested, approved, and published.
+- Feature events and audit logs support dealership analytics and founder admin visibility.
+- The dashboard search opens with `Cmd/Ctrl+K` and can search saved listings by VIN, stock number, year, make, or model.
+
+## Product Notes
+
+The MVP intentionally does not include real Stripe payments, CRM features, lead management, automated publishing, fake testimonials, fake customer logos, fake integrations, or invented VIN data.
+
+Held for later: paid/commercial VIN data integrations, window sticker data, build-sheet enrichment, and AI/photo-assisted vehicle feature extraction.
