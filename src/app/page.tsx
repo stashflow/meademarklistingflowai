@@ -39,6 +39,7 @@ export default function LandingPage() {
           <nav className="hidden items-center gap-8 text-sm font-medium text-zinc-400 lg:flex">
             <a href="#how-it-works" className="transition hover:text-white">Workflow</a>
             <a href="#style-learning" className="transition hover:text-white">Controls</a>
+            <Link href="/pricing" className="transition hover:text-white">Pricing</Link>
             <a href="#early-access" className="transition hover:text-white">Access</a>
           </nav>
           <div className="flex items-center gap-2">

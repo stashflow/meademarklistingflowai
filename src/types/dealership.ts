@@ -4,7 +4,12 @@ export type SubscriptionStatus =
   | "trial"
   | "starter_demo"
   | "pro_demo"
-  | "unlimited_demo";
+  | "unlimited_demo"
+  | "starter"
+  | "pro"
+  | "dealer_group"
+  | "past_due"
+  | "canceled";
 
 export type Profile = {
   id: string;
@@ -33,6 +38,12 @@ export type Dealership = {
   trial_generation_limit: number;
   subscription_status: SubscriptionStatus;
   fake_paid_mode: boolean;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  stripe_price_id: string | null;
+  stripe_current_period_end: string | null;
+  trial_ends_at: string | null;
+  billing_email: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -66,6 +77,11 @@ export const PLAN_LIMITS: Record<SubscriptionStatus, PlanLimit> = {
   starter_demo: 150,
   pro_demo: 500,
   unlimited_demo: "unlimited",
+  starter: 150,
+  pro: 500,
+  dealer_group: "unlimited",
+  past_due: 35,
+  canceled: 35,
 };
 
 export const ROLE_LABELS: Record<DealershipRole, string> = {

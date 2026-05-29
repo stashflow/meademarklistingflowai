@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Building2, Check, Clock, FileText, Loader2, Search, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, Bookmark, Building2, Check, Clock, FileText, Loader2, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -98,6 +98,7 @@ export function OnboardingFlow() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [showBookmarkPrompt, setShowBookmarkPrompt] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState("");
@@ -341,8 +342,8 @@ export function OnboardingFlow() {
         .from("profiles")
         .update({ onboarding_completed: true, active_dealership_id: dealershipId })
         .eq("user_id", auth.user?.id);
-      router.push("/dashboard");
-      router.refresh();
+      setShowBookmarkPrompt(true);
+      setMessage("");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not complete onboarding.");
     } finally {
@@ -700,7 +701,7 @@ export function OnboardingFlow() {
         </Card>
       )}
 
-      {step === 5 && styleProfile && (
+      {step === 5 && styleProfile && !showBookmarkPrompt && (
         <Card className="app-card overflow-hidden rounded-[2rem] border-white/12">
           <div className="h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent" />
           <CardHeader>
@@ -728,6 +729,60 @@ export function OnboardingFlow() {
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
               Accept and open dashboard
             </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {showBookmarkPrompt && (
+        <Card className="app-card overflow-hidden rounded-[2rem] border-white/12">
+          <div className="h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent" />
+          <CardHeader>
+            <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg border border-red-500/30 bg-red-500/10">
+              <Bookmark className="h-5 w-5 text-red-100" />
+            </div>
+            <CardTitle className="font-display text-3xl">Keep ListingFlow one click away</CardTitle>
+            <CardDescription>
+              Dealership teams move faster when ListingFlow sits next to their inventory and marketplace tools.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border border-white/10 bg-white/[.035] p-4">
+                <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Mac</div>
+                <div className="mt-2 font-mono text-lg text-white">Command + D</div>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-white/[.035] p-4">
+                <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Windows</div>
+                <div className="mt-2 font-mono text-lg text-white">Ctrl + D</div>
+              </div>
+            </div>
+            <p className="rounded-lg border border-amber-400/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
+              Bookmark this page now, then open the dashboard to generate the dealership&apos;s first VIN-based listing.
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button
+                className="flex-1 bg-primary hover:bg-red-700"
+                onClick={() => {
+                  window.localStorage.setItem("listingflow-bookmark-prompt-seen", "true");
+                  router.push("/dashboard");
+                  router.refresh();
+                }}
+              >
+                <ArrowRight className="h-4 w-4" />
+                Open dashboard
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 border-white/10 bg-white/[.035]"
+                onClick={() => {
+                  window.localStorage.setItem("listingflow-bookmark-prompt-seen", "true");
+                  router.push("/dashboard/new-listing");
+                  router.refresh();
+                }}
+              >
+                Start first listing
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

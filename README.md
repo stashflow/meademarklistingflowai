@@ -28,6 +28,14 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 LISTINGFLOW_ADMIN_EMAILS=
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+STRIPE_PRICE_STARTER_MONTHLY=
+STRIPE_PRICE_STARTER_YEARLY=
+STRIPE_PRICE_PRO_MONTHLY=
+STRIPE_PRICE_PRO_YEARLY=
+STRIPE_PRICE_DEALER_GROUP_MONTHLY=
+STRIPE_PRICE_DEALER_GROUP_YEARLY=
 ```
 
 `SUPABASE_SERVICE_ROLE_KEY` is used only in secure server contexts for rate limiting and public early access inserts. Do not expose it to the browser.
@@ -141,9 +149,40 @@ Route limits:
 - `/api/invites/create`: 10 invites per dealership per day
 - `/api/early-access`: 5 submissions per IP per hour, falling back to email
 
-## Fake Billing
+## Stripe Billing
 
-Billing is demo/test functionality only. No real payments are processed. Stripe is not implemented yet. Demo billing exists only to test plan gating, generation limits, and subscription-state behavior before real billing is added.
+Stripe Checkout is implemented for real subscription collection with a 7-day free trial. Stripe Customer Portal is used for payment method updates, invoices, cancellation, and subscription management. Stripe webhooks update dealership plan state automatically.
+
+Create recurring Stripe prices for:
+
+- Starter monthly/yearly
+- Pro monthly/yearly
+- Dealer Group monthly/yearly
+
+Then add the Stripe price IDs to `.env.local` and Vercel. Configure the webhook endpoint:
+
+```bash
+https://your-domain.com/api/stripe/webhook
+```
+
+Listen for:
+
+- `checkout.session.completed`
+- `customer.subscription.created`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+- `invoice.paid`
+- `invoice.payment_failed`
+
+Recommended launch pricing:
+
+- Starter: $79/month or $790/year
+- Pro: $149/month or $1,490/year
+- Dealer Group: $299/month or $2,990/year
+
+## Demo Billing
+
+Demo billing remains available for founder testing only. No real payments are processed by the demo controls. Use Stripe Checkout for real customer billing.
 
 The Billing page can toggle:
 
@@ -152,7 +191,7 @@ The Billing page can toggle:
 - Unlimited Demo
 - Free Trial
 
-Replace this with Stripe before real customer billing.
+Do not use demo billing for real customer billing.
 
 ## VIN Decoding
 

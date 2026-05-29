@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import { AlertTriangle, Check, CheckCircle2, Clipboard, HelpCircle, ImageIcon, ScanLine, Save, ShieldAlert, Sparkles } from "lucide-react";
 import { formatFeatureLabel } from "@/lib/generation/feature-highlights";
 import { ListingFlowLoader } from "@/components/common/listingflow-loader";
@@ -16,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { normalizeNumber } from "@/lib/validators/listing";
 import type { ListingOutput, ListingStatus, VehicleInput } from "@/types/listing";
+import type { FillInQuestion } from "@/lib/generation/fill-in";
 
 const vehicleFields: Array<[keyof VehicleInput, string, string]> = [
   ["year", "Year", "2022"],
@@ -109,6 +111,14 @@ export function ListingGenerator({ dealershipId, initialVin = "" }: { dealership
   const [loading, setLoading] = useState(false);
   const [decodingVin, setDecodingVin] = useState(false);
   const [vinConfirmed, setVinConfirmed] = useState(Boolean(stagedDraft.vehicle.year && stagedDraft.vehicle.make && stagedDraft.vehicle.model));
+  const [fillInOpen, setFillInOpen] = useState(false);
+  const [fillInLoading, setFillInLoading] = useState(false);
+  const [fillInQuestions, setFillInQuestions] = useState<FillInQuestion[]>([]);
+  const [fillInIndex, setFillInIndex] = useState(0);
+  const [fillInAnswers, setFillInAnswers] = useState<Record<string, string>>({});
+  const [fillInAnswer, setFillInAnswer] = useState("");
+  const [fillInWarnings, setFillInWarnings] = useState<string[]>([]);
+  const [highlightMissing, setHighlightMissing] = useState(false);
 
   const vehicleName = useMemo(
     () => [vehicle.year, vehicle.make, vehicle.model, vehicle.trim].filter(Boolean).join(" "),
@@ -145,6 +155,83 @@ export function ListingGenerator({ dealershipId, initialVin = "" }: { dealership
     if (["vin", "year", "make", "model", "trim"].includes(key)) {
       setVinConfirmed(false);
     }
+  }
+
+  function needsField(key: keyof VehicleInput) {
+    if (!highlightMissing) return false;
+    return ["mileage", "condition", "overallCondition", "keyFeatures", "sellerNotes"].includes(String(key)) && !vehicle[key];
+  }
+
+  async function startFillIn() {
+    setFillInOpen(true);
+    setFillInLoading(true);
+    setFillInWarnings([]);
+    setMessage("");
+    try {
+      const response = await fetch("/api/fill-in/questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dealershipId, vehicle }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message || "Could not start LF Fill In.");
+      setFillInQuestions(payload.questions || []);
+      setFillInIndex(0);
+      setFillInAnswers({});
+      setFillInAnswer("");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not start LF Fill In.");
+      setFillInOpen(false);
+    } finally {
+      setFillInLoading(false);
+    }
+  }
+
+  async function finishFillIn(nextAnswers: Record<string, string>) {
+    setFillInLoading(true);
+    try {
+      const response = await fetch("/api/fill-in/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dealershipId, vehicle, answers: nextAnswers }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message || "Could not apply LF Fill In.");
+      const features = payload.featureHighlights?.length
+        ? payload.featureHighlights.map((feature: { label: string; status: string }) =>
+            feature.status === "unsure" || feature.status === "ask_user"
+              ? `${feature.label} [unsure if applicable]`
+              : feature.label,
+          ).join(", ")
+        : "";
+      setVehicle((current) => ({
+        ...current,
+        ...payload.updates,
+        keyFeatures: [payload.updates?.keyFeatures || current.keyFeatures, features].filter(Boolean).join(", "),
+        validatedFeaturesJson: JSON.stringify(payload.featureHighlights || []),
+        featureClarificationQuestions: (payload.warnings || []).join("\n"),
+      }));
+      setFillInWarnings([...(payload.warnings || []), ...(payload.confidenceNotes || [])]);
+      setHighlightMissing(true);
+      setMessage("LF Fill In added safe fields and feature highlights. Review anything marked unsure before generating.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not apply LF Fill In.");
+    } finally {
+      setFillInLoading(false);
+    }
+  }
+
+  function submitFillInAnswer() {
+    const question = fillInQuestions[fillInIndex];
+    if (!question) return;
+    const nextAnswers = { ...fillInAnswers, [question.id]: fillInAnswer.trim() };
+    setFillInAnswers(nextAnswers);
+    setFillInAnswer("");
+    if (fillInIndex + 1 >= fillInQuestions.length) {
+      finishFillIn(nextAnswers);
+      return;
+    }
+    setFillInIndex((current) => current + 1);
   }
 
   async function decodeVin() {
@@ -186,6 +273,12 @@ export function ListingGenerator({ dealershipId, initialVin = "" }: { dealership
       setActiveTab("vehicle");
       return;
     }
+    if (!vehicle.mileage || (!vehicle.condition && !vehicle.overallCondition) || (!vehicle.keyFeatures && !vehicle.sellerNotes)) {
+      setHighlightMissing(true);
+      setMessage("Add the highlighted details or use LF Fill In before generating. Mileage, condition, and features or seller notes are needed for a strong listing.");
+      setActiveTab("vehicle");
+      return;
+    }
     setLoading(true);
     setMessage("");
     const response = await fetch("/api/generate-listing", {
@@ -201,6 +294,9 @@ export function ListingGenerator({ dealershipId, initialVin = "" }: { dealership
           useStyleProfile,
           customInstructions: [
             customInstructions,
+            vehicle.validatedFeaturesJson
+              ? `LF Fill In validated features JSON: ${vehicle.validatedFeaturesJson}. Use confirmed features confidently. Mark uncertain features clearly and do not upgrade them to confirmed.`
+              : "",
             vehicle.vinDecoded === "true"
               ? `VIN decoded by ${vehicle.vinDecodeSource || "decoder"}. Use decoded fields only as provided and do not invent missing trim/specs.`
               : "",
@@ -332,6 +428,12 @@ export function ListingGenerator({ dealershipId, initialVin = "" }: { dealership
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button type="button" onClick={startFillIn} className="bg-white text-[#0B0D10] hover:bg-zinc-200">
+              <span className="relative h-5 w-5 overflow-hidden rounded border border-black/10">
+                <Image src="/brand/lf-favicon.png" alt="" fill sizes="20px" className="object-cover" />
+              </span>
+              Fill In
+            </Button>
             <Badge variant="outline" className="w-fit border-red-500/30 text-red-200">
               Uses 1 generation
             </Badge>
@@ -345,6 +447,50 @@ export function ListingGenerator({ dealershipId, initialVin = "" }: { dealership
         {message && (
           <div className="m-5 rounded-lg border border-white/10 bg-white/[.035] p-4 text-sm text-muted-foreground">
             {message}
+          </div>
+        )}
+        {fillInOpen && (
+          <div className="m-5 rounded-2xl border border-red-500/25 bg-[#0B0D10]/90 p-5">
+            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+              <div className="flex items-center gap-3">
+                <div className="relative h-11 w-11 overflow-hidden rounded-lg border border-white/10 bg-[#111827]">
+                  <Image src="/brand/lf-favicon.png" alt="ListingFlow" fill sizes="44px" className="object-cover" />
+                </div>
+                <div>
+                  <div className="font-display text-2xl text-white">LF Fill In</div>
+                  <p className="text-sm text-muted-foreground">Answer simple questions. ListingFlow fills safe fields and feature highlights.</p>
+                </div>
+              </div>
+              <Button variant="ghost" onClick={() => setFillInOpen(false)}>Close</Button>
+            </div>
+            {fillInLoading ? (
+              <div className="mt-5 rounded-lg border border-white/10 bg-white/[.035] p-4">
+                <ListingFlowLoader compact label="LF Fill In is working" />
+              </div>
+            ) : fillInQuestions[fillInIndex] ? (
+              <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
+                <div className="space-y-2">
+                  <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                    Question {fillInIndex + 1} of {fillInQuestions.length}
+                  </div>
+                  <Label className="text-base text-white">{fillInQuestions[fillInIndex].label}</Label>
+                  <p className="text-sm text-muted-foreground">{fillInQuestions[fillInIndex].helper}</p>
+                  <Textarea value={fillInAnswer} onChange={(event) => setFillInAnswer(event.target.value)} placeholder="Type the staff answer here" />
+                </div>
+                <Button onClick={submitFillInAnswer} className="bg-primary text-primary-foreground hover:bg-red-500">
+                  {fillInIndex + 1 >= fillInQuestions.length ? "Fill fields" : "Next question"}
+                </Button>
+              </div>
+            ) : (
+              <div className="mt-5 rounded-lg border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm text-emerald-100">
+                LF Fill In is ready. Review highlighted fields before generating.
+              </div>
+            )}
+            {!!fillInWarnings.length && (
+              <div className="mt-4 rounded-lg border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100">
+                {fillInWarnings.join(" ")}
+              </div>
+            )}
           </div>
         )}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -444,7 +590,12 @@ export function ListingGenerator({ dealershipId, initialVin = "" }: { dealership
                 {vehicleFields.map(([key, label, placeholder]) => (
                   <div key={key} className="space-y-2">
                     <Label>{label}</Label>
-                    <Input value={vehicle[key] || ""} onChange={(event) => updateVehicle(key, event.target.value)} placeholder={placeholder} />
+                    <Input
+                      value={vehicle[key] || ""}
+                      onChange={(event) => updateVehicle(key, event.target.value)}
+                      placeholder={placeholder}
+                      className={needsField(key) ? "border-amber-400/60 bg-amber-400/10" : undefined}
+                    />
                   </div>
                 ))}
               </div>
@@ -458,7 +609,11 @@ export function ListingGenerator({ dealershipId, initialVin = "" }: { dealership
                 {conditionFields.map(([key, label]) => (
                   <div key={key} className="space-y-2">
                     <Label>{label}</Label>
-                    <Input value={vehicle[key] || ""} onChange={(event) => updateVehicle(key, event.target.value)} />
+                    <Input
+                      value={vehicle[key] || ""}
+                      onChange={(event) => updateVehicle(key, event.target.value)}
+                      className={needsField(key) ? "border-amber-400/60 bg-amber-400/10" : undefined}
+                    />
                   </div>
                 ))}
               </div>
@@ -469,7 +624,11 @@ export function ListingGenerator({ dealershipId, initialVin = "" }: { dealership
                 {sellingFields.map(([key, label]) => (
                   <div key={key} className="space-y-2">
                     <Label>{label}</Label>
-                    <Textarea value={vehicle[key] || ""} onChange={(event) => updateVehicle(key, event.target.value)} />
+                    <Textarea
+                      value={vehicle[key] || ""}
+                      onChange={(event) => updateVehicle(key, event.target.value)}
+                      className={needsField(key) ? "border-amber-400/60 bg-amber-400/10" : undefined}
+                    />
                   </div>
                 ))}
               </div>
