@@ -119,6 +119,7 @@ export function ListingGenerator({ dealershipId, initialVin = "" }: { dealership
   const [fillInAnswer, setFillInAnswer] = useState("");
   const [fillInWarnings, setFillInWarnings] = useState<string[]>([]);
   const [highlightMissing, setHighlightMissing] = useState(false);
+  const [quickFillLoading, setQuickFillLoading] = useState<string | null>(null);
 
   const vehicleName = useMemo(
     () => [vehicle.year, vehicle.make, vehicle.model, vehicle.trim].filter(Boolean).join(" "),
@@ -232,6 +233,48 @@ export function ListingGenerator({ dealershipId, initialVin = "" }: { dealership
       return;
     }
     setFillInIndex((current) => current + 1);
+  }
+
+  async function quickFillField(key: keyof VehicleInput) {
+    setQuickFillLoading(String(key));
+    setMessage("");
+    try {
+      const response = await fetch("/api/fill-in/field", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dealershipId, vehicle, field: key }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message || "Could not fill this field.");
+      if (!payload.canFill) {
+        setMessage(payload.message || "Sorry, not enough info yet.");
+        return;
+      }
+      updateVehicle(key, payload.value);
+      setMessage(payload.message || "LF quick fill updated that field.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not fill this field.");
+    } finally {
+      setQuickFillLoading(null);
+    }
+  }
+
+  function LfQuickFillButton({ field }: { field: keyof VehicleInput }) {
+    return (
+      <Button
+        type="button"
+        size="icon-sm"
+        variant="ghost"
+        disabled={quickFillLoading === field}
+        onClick={() => quickFillField(field)}
+        className="absolute right-2 top-2 z-10 border border-white/10 bg-[#0B0D10]/85 p-1 hover:bg-white/10"
+        title="LF quick fill"
+      >
+        <span className="relative h-4 w-4 overflow-hidden rounded-sm">
+          <Image src="/brand/lf-favicon.png" alt="LF quick fill" fill sizes="16px" className="object-cover" />
+        </span>
+      </Button>
+    );
   }
 
   async function decodeVin() {
@@ -609,11 +652,22 @@ export function ListingGenerator({ dealershipId, initialVin = "" }: { dealership
                 {conditionFields.map(([key, label]) => (
                   <div key={key} className="space-y-2">
                     <Label>{label}</Label>
-                    <Input
-                      value={vehicle[key] || ""}
-                      onChange={(event) => updateVehicle(key, event.target.value)}
-                      className={needsField(key) ? "border-amber-400/60 bg-amber-400/10" : undefined}
-                    />
+                    {["condition", "overallCondition", "tireCondition", "interiorCondition", "exteriorCondition"].includes(String(key)) ? (
+                      <div className="relative">
+                        <Input
+                          value={vehicle[key] || ""}
+                          onChange={(event) => updateVehicle(key, event.target.value)}
+                          className={`${needsField(key) ? "border-amber-400/60 bg-amber-400/10" : ""} pr-10`}
+                        />
+                        <LfQuickFillButton field={key} />
+                      </div>
+                    ) : (
+                      <Input
+                        value={vehicle[key] || ""}
+                        onChange={(event) => updateVehicle(key, event.target.value)}
+                        className={needsField(key) ? "border-amber-400/60 bg-amber-400/10" : undefined}
+                      />
+                    )}
                   </div>
                 ))}
               </div>
@@ -624,11 +678,14 @@ export function ListingGenerator({ dealershipId, initialVin = "" }: { dealership
                 {sellingFields.map(([key, label]) => (
                   <div key={key} className="space-y-2">
                     <Label>{label}</Label>
-                    <Textarea
-                      value={vehicle[key] || ""}
-                      onChange={(event) => updateVehicle(key, event.target.value)}
-                      className={needsField(key) ? "border-amber-400/60 bg-amber-400/10" : undefined}
-                    />
+                    <div className="relative">
+                      <Textarea
+                        value={vehicle[key] || ""}
+                        onChange={(event) => updateVehicle(key, event.target.value)}
+                        className={`${needsField(key) ? "border-amber-400/60 bg-amber-400/10" : ""} pr-11`}
+                      />
+                      <LfQuickFillButton field={key} />
+                    </div>
                   </div>
                 ))}
               </div>
