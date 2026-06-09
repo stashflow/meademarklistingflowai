@@ -183,7 +183,7 @@ export function BillingPanel({
             <CardContent className="space-y-5">
               <p className="text-sm text-muted-foreground">{plan.limit}</p>
               <Button
-                disabled={!canToggle || loading === plan.status}
+                disabled={!canToggle || Boolean(current.stripe_subscription_id) || loading === plan.status}
                 onClick={() => setPlan(plan.status)}
                 className="w-full bg-primary hover:bg-red-700"
               >
@@ -195,6 +195,11 @@ export function BillingPanel({
         ))}
       </div>
       {!canToggle && <p className="text-sm text-muted-foreground">Only dealership owners can toggle demo billing mode.</p>}
+      {current.stripe_subscription_id && (
+        <p className="text-sm text-muted-foreground">
+          Demo plan controls are locked while a real Stripe subscription is attached to this dealership.
+        </p>
+      )}
     </div>
   );
 }

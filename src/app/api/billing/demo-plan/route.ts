@@ -29,11 +29,21 @@ export async function POST(request: Request) {
       );
     }
 
-    const { member } = await getDealershipContext(supabase, user.id, parsed.data.dealershipId);
-    if (!member || member.role !== "owner") {
+    const { dealership, member } = await getDealershipContext(supabase, user.id, parsed.data.dealershipId);
+    if (!dealership || !member || member.role !== "owner") {
       return NextResponse.json(
         { error: true, code: "FORBIDDEN", message: "Only owners can toggle demo billing mode." },
         { status: 403 },
+      );
+    }
+    if (dealership.stripe_subscription_id) {
+      return NextResponse.json(
+        {
+          error: true,
+          code: "REAL_SUBSCRIPTION_ACTIVE",
+          message: "Demo plans cannot replace a Stripe subscription. Manage the real subscription in Stripe instead.",
+        },
+        { status: 409 },
       );
     }
 

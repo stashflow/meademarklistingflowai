@@ -63,7 +63,9 @@ Generation rules:
 - Never say "fully loaded" unless enough features justify it.
 - Never say "perfect condition" unless explicitly provided.
 - Avoid overhyped or scammy phrases.
-- Include review warnings for missing or sensitive details.
+- Include no more than 4 concise review warnings.
+- Warn only about missing details that materially affect buyer understanding or a claim already present in the copy.
+- Do not return an exhaustive list of every blank optional field.
 - Encourage human review before publishing.
 
 Platform behavior:

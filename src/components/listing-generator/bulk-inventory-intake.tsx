@@ -97,7 +97,7 @@ function parseInventory(raw: string) {
 export function BulkInventoryIntake({ dealershipId }: { dealershipId: string }) {
   const router = useRouter();
   const [batchName, setBatchName] = useState(`Inventory intake ${new Date().toLocaleDateString()}`);
-  const [rawCsv, setRawCsv] = useState(sampleCsv);
+  const [rawCsv, setRawCsv] = useState("");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -229,7 +229,12 @@ export function BulkInventoryIntake({ dealershipId }: { dealershipId: string }) 
             </div>
             <div className="space-y-2">
               <Label>CSV / spreadsheet rows</Label>
-              <Textarea rows={16} value={rawCsv} onChange={(event) => setRawCsv(event.target.value)} />
+              <Textarea
+                rows={16}
+                value={rawCsv}
+                onChange={(event) => setRawCsv(event.target.value)}
+                placeholder={sampleCsv}
+              />
             </div>
             {message && <p className="rounded-lg border border-white/10 bg-white/[.035] p-3 text-sm text-muted-foreground">{message}</p>}
             <Button onClick={saveBatch} disabled={!rows.length || saving} className="w-full bg-primary text-primary-foreground hover:bg-red-500">

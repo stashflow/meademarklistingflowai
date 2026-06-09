@@ -84,5 +84,5 @@ export function statusFromPriceId(priceId?: string | null): SubscriptionStatus {
       return plan.status;
     }
   }
-  return "trial";
+  return "canceled";
 }

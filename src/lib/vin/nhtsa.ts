@@ -9,18 +9,18 @@ export type VinDecodeResult = {
 };
 
 const fieldMap: Array<[string, keyof VehicleInput]> = [
-  ["Model Year", "year"],
+  ["ModelYear", "year"],
   ["Make", "make"],
   ["Model", "model"],
   ["Trim", "trim"],
   ["Series", "trim"],
-  ["Body Class", "vehicleType"],
-  ["Drive Type", "drivetrain"],
-  ["Transmission Style", "transmission"],
-  ["Engine Model", "engine"],
-  ["Engine Configuration", "engine"],
-  ["Displacement (L)", "engine"],
-  ["Fuel Type - Primary", "fuelType"],
+  ["BodyClass", "vehicleType"],
+  ["DriveType", "drivetrain"],
+  ["TransmissionStyle", "transmission"],
+  ["EngineModel", "engine"],
+  ["EngineConfiguration", "engine"],
+  ["DisplacementL", "engine"],
+  ["FuelTypePrimary", "fuelType"],
 ];
 
 function clean(value: unknown) {
@@ -30,10 +30,16 @@ function clean(value: unknown) {
 }
 
 function mergeEngine(raw: Record<string, string>) {
+  const displacement = Number(raw.DisplacementL);
+  const formattedDisplacement = Number.isFinite(displacement)
+    ? `${displacement.toFixed(1)}L`
+    : raw.DisplacementL
+      ? `${raw.DisplacementL}L`
+      : "";
   return [
-    raw["Displacement (L)"] ? `${raw["Displacement (L)"]}L` : "",
-    raw["Engine Configuration"],
-    raw["Engine Model"],
+    formattedDisplacement,
+    raw.EngineConfiguration,
+    raw.EngineModel,
   ].filter(Boolean).join(" ");
 }
 

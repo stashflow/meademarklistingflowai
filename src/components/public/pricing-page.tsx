@@ -23,7 +23,7 @@ const plans = [
       "5 team users",
       "VIN-first listing builder",
       "NHTSA VIN intelligence",
-      "Dealer website, Facebook, Craigslist, SEO outputs",
+      "Dealer website, Facebook, CarGurus, Craigslist, and SEO outputs",
       "Dealership style profile",
       "Shared saved listing library",
       "Copy-ready output tabs",
@@ -77,7 +77,7 @@ const plans = [
 
 const platformFeatures = [
   ["VIN workflow", "NHTSA decode, safety/recall intelligence, staff confirmation, no invented claims"],
-  ["AI outputs", "Facebook, website, Craigslist, SEO, highlights, notes, and disclaimers"],
+  ["AI outputs", "Facebook, CarGurus, website, Craigslist, SEO, highlights, notes, and disclaimers"],
   ["Style learning", "Old listing examples, banned phrases, preferred CTAs, dealership voice memory"],
   ["Risk controls", "Claim Risk Auditor, review warnings, unsupported-claim detection, quality score"],
   ["Team workflow", "Workspaces, roles, invites, join requests, shared library, approval statuses"],

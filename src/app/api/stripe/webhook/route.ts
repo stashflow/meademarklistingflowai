@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 function subscriptionStatus(status: string, priceId?: string | null) {
   if (status === "active" || status === "trialing") return statusFromPriceId(priceId);
-  if (status === "past_due" || status === "unpaid") return "past_due";
+  if (status === "past_due" || status === "unpaid" || status === "incomplete" || status === "paused") return "past_due";
   if (status === "canceled" || status === "incomplete_expired") return "canceled";
   return "trial";
 }
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     const customerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
     if (!dealershipId) return;
 
-    await supabase
+    const { error } = await supabase
       .from("dealerships")
       .update({
         stripe_customer_id: customerId,
@@ -63,6 +63,7 @@ export async function POST(request: Request) {
         updated_at: new Date().toISOString(),
       })
       .eq("id", dealershipId);
+    if (error) throw error;
   }
 
   switch (event.type) {
@@ -85,10 +86,21 @@ export async function POST(request: Request) {
       if (typeof subscriptionId === "string") await syncSubscription(subscriptionId);
       break;
     }
+    case "invoice.payment_action_required":
+    case "invoice.finalization_failed": {
+      const invoice = event.data.object as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null };
+      const subscriptionId = invoice.subscription;
+      if (typeof subscriptionId === "string") await syncSubscription(subscriptionId);
+      break;
+    }
     case "invoice.paid": {
       const invoice = event.data.object as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null };
       const subscriptionId = invoice.subscription;
       if (typeof subscriptionId === "string") await syncSubscription(subscriptionId);
+      break;
+    }
+    case "customer.subscription.trial_will_end": {
+      await syncSubscription(event.data.object.id);
       break;
     }
     default:

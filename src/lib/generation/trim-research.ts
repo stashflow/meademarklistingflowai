@@ -19,11 +19,11 @@ const researchPayloadSchema = z.object({
   })),
   specifications: z.array(z.object({
     trim: z.string(),
-    engine: z.string().optional(),
-    transmission: z.string().optional(),
-    drivetrain: z.string().optional(),
-    fuelType: z.string().optional(),
-    mpg: z.string().optional(),
+    engine: z.string().nullable(),
+    transmission: z.string().nullable(),
+    drivetrain: z.string().nullable(),
+    fuelType: z.string().nullable(),
+    mpg: z.string().nullable(),
     features: z.array(z.string()),
     variableFields: z.array(z.string()),
   })),
@@ -197,6 +197,16 @@ Rules:
     if (nhtsa.source) sourceMap.set(nhtsa.source.url, nhtsa.source.label);
     const sources = [...sourceMap.entries()].map(([url, label]) => ({ label, url })).slice(0, 12);
     const now = new Date().toISOString();
+    const specifications: TrimSpecification[] = (payload.specifications || []).slice(0, 12).map((specification) => ({
+      trim: specification.trim,
+      engine: specification.engine || undefined,
+      transmission: specification.transmission || undefined,
+      drivetrain: specification.drivetrain || undefined,
+      fuelType: specification.fuelType || undefined,
+      mpg: specification.mpg || undefined,
+      features: specification.features,
+      variableFields: specification.variableFields,
+    }));
     const row = {
       research_key: key,
       year: input.year,
@@ -204,7 +214,7 @@ Rules:
       model: input.model,
       market,
       trim_candidates: (payload.candidates || []).slice(0, 8),
-      specification_matrix: { specifications: (payload.specifications || []).slice(0, 12) },
+      specification_matrix: { specifications },
       distinguishing_questions: (payload.questions || []).slice(0, 8),
       sources,
       confidence: payload.confidence || "low",

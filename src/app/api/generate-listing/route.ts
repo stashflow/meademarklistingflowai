@@ -6,6 +6,7 @@ import { generateVehicleListing } from "@/lib/generation/generate-listing";
 import { canGenerateForPlan, currentMonthKey } from "@/lib/generation/plans";
 import { getDealershipContext } from "@/lib/permissions";
 import { checkRateLimit, rateLimitedResponse } from "@/lib/rate-limit";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { trackFeatureEvent, writeAuditLog } from "@/lib/telemetry/audit";
 import {
@@ -21,6 +22,24 @@ function planLimitMessage(status: string, limit: number | "unlimited") {
     return "Listing generation is paused because this dealership’s subscription is canceled. The dealership owner can restart a plan in Billing.";
   }
   return `You’ve reached the ${limit}-generation monthly free trial limit for this dealership. Choose a paid plan to continue generating, or wait until the next monthly reset.`;
+}
+
+function conciseReviewWarnings(
+  vehicle: Record<string, string | undefined>,
+  warnings: string[],
+  inputWarnings: string[],
+) {
+  const specificWarnings = warnings.filter(
+    (warning) => !/^(missing|please provide|add more)\b/i.test(warning.trim()),
+  );
+  const contextualWarnings = [
+    !vehicle.trim ? "Trim is unconfirmed, so trim-specific claims were omitted." : null,
+    !vehicle.titleStatus && !vehicle.accidentHistory
+      ? "Title and accident history were not provided and are omitted from public copy."
+      : null,
+    ...inputWarnings.filter((warning) => !/^(missing|please provide|add more)\b/i.test(warning.trim())),
+  ].filter(Boolean) as string[];
+  return [...new Set([...specificWarnings, ...contextualWarnings])].slice(0, 4);
 }
 
 export async function POST(request: Request) {
@@ -81,19 +100,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: true, code: "INPUT_QUALITY", ...deterministic }, { status: 400 });
     }
 
-    let quality = deterministic;
-    try {
-      quality = await analyzeVehicleInputQuality(parsed.data.vehicle);
-    } catch {
-      quality = deterministic;
-    }
-
-    if (!quality.canGenerate || quality.status !== "valid") {
-      return NextResponse.json({ error: true, code: "INPUT_QUALITY", ...quality }, { status: 400 });
-    }
-
     const monthKey = currentMonthKey();
-    const { data: usageRecord, error: usageError } = await supabase
+    const usageAdmin = getSupabaseAdminClient();
+    const { data: usageRecord, error: usageError } = await usageAdmin
       .from("generation_usage")
       .select("*")
       .eq("dealership_id", dealership.id)
@@ -111,6 +120,22 @@ export async function POST(request: Request) {
         { status: 402 },
       );
     }
+
+    let quality = deterministic;
+    try {
+      quality = await analyzeVehicleInputQuality(parsed.data.vehicle);
+    } catch {
+      quality = deterministic;
+    }
+
+    if (quality.status === "contradictory" || quality.status === "nonsense") {
+      return NextResponse.json({ error: true, code: "INPUT_QUALITY", ...quality }, { status: 400 });
+    }
+    const inputQualityWarnings = quality.status === "incomplete"
+      ? quality.issues.length
+        ? quality.issues
+        : [quality.userMessage].filter(Boolean)
+      : [];
 
     const { data: styleProfile } = await supabase
       .from("dealership_style_profiles")
@@ -134,12 +159,12 @@ export async function POST(request: Request) {
     const claimRiskAudit = auditListingClaims(parsed.data.vehicle, output);
     output.claimRiskAudit = claimRiskAudit;
     output.reviewWarnings = [
-      ...(output.reviewWarnings || []),
+      ...conciseReviewWarnings(parsed.data.vehicle, output.reviewWarnings || [], inputQualityWarnings),
       ...claimRiskAudit.riskClaims.map((claim) => `${claim.claim}: ${claim.reason}`),
-    ];
+    ].slice(0, 6);
 
     if (usageRecord) {
-      await supabase
+      const { error: incrementError } = await usageAdmin
         .from("generation_usage")
         .update({
           generation_count: usageCount + 1,
@@ -147,13 +172,15 @@ export async function POST(request: Request) {
           updated_at: new Date().toISOString(),
         })
         .eq("id", usageRecord.id);
+      if (incrementError) throw incrementError;
     } else {
-      await supabase.from("generation_usage").insert({
+      const { error: insertUsageError } = await usageAdmin.from("generation_usage").insert({
         dealership_id: dealership.id,
         user_id: user.id,
         month_key: monthKey,
         generation_count: 1,
       });
+      if (insertUsageError) throw insertUsageError;
     }
 
     await trackFeatureEvent(supabase, {

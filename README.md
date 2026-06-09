@@ -55,7 +55,7 @@ OPENAI_RESEARCH_MODEL=gpt-4o-mini
 2. Copy the URL and anon key into `.env.local`.
 3. Copy the service role key into `.env.local`.
 4. Run the SQL migrations in order from `supabase/migrations/`.
-   - Fresh setup: run `0001` through `0006` in numeric order.
+   - Fresh setup: run `0001` through `0007` in numeric order.
    - Existing setup that already ran the first migration: run the newer migration files you have not applied yet.
 5. Enable email/password authentication in Supabase Auth.
 6. Configure the site URL and redirect URL, for example:

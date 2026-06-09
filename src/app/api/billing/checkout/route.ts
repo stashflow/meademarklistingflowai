@@ -59,15 +59,17 @@ export async function POST(request: Request) {
         },
       });
       customerId = customer.id;
-      await supabase
+      const { error: customerSaveError } = await supabase
         .from("dealerships")
         .update({ stripe_customer_id: customerId, billing_email: user.email, updated_at: new Date().toISOString() })
         .eq("id", dealership.id);
+      if (customerSaveError) throw customerSaveError;
     }
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
+      payment_method_collection: "always",
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: {
         ...(dealership.trial_ends_at || dealership.stripe_subscription_id ? {} : { trial_period_days: 7 }),

@@ -191,6 +191,7 @@ export function ListingGenerator({
     const notes: string[] = [];
     if (!vehicle.vin && !(vehicle.year && vehicle.make && vehicle.model)) notes.push("Add VIN or year/make/model.");
     if (!vehicle.mileage) notes.push("Mileage improves buyer confidence.");
+    if (!vehicle.trim) notes.push("Trim is unconfirmed; trim-specific features will stay out of public copy.");
     if (!vehicle.condition && !vehicle.overallCondition) notes.push("Condition is required for reliable copy.");
     if (!vehicle.keyFeatures && !vehicle.sellerNotes) notes.push("Add features or seller notes for stronger selling angles.");
     if (vehicle.vinDecoded === "true" && !vinConfirmed) notes.push("Confirm decoded VIN details before generating.");
@@ -364,6 +365,7 @@ export function ListingGenerator({
   }
 
   function startNextVehicle() {
+    lastDecodedVin.current = "";
     setDraftId(null);
     draftVersionRef.current = 1;
     setLinkedListingId(null);
@@ -472,7 +474,14 @@ export function ListingGenerator({
         ).join(", ")
       : "";
 
-    let resolvedMissingFields: string[] = [];
+    const previewVehicle = {
+      ...vehicle,
+      ...(payload.updates || {}),
+      keyFeatures: mergeCommaText(payload.updates?.keyFeatures || vehicle.keyFeatures, features),
+    };
+    const resolvedMissingFields = (payload.missingFields || []).filter(
+      (field) => !String(previewVehicle[field as keyof VehicleInput] || "").trim(),
+    );
     setVehicle((current) => {
       const nextVehicle = {
         ...current,
@@ -485,9 +494,6 @@ export function ListingGenerator({
           ? JSON.stringify(payload.featureHighlights)
           : current.validatedFeaturesJson,
       };
-      resolvedMissingFields = (payload.missingFields || []).filter(
-        (field) => !String(nextVehicle[field as keyof VehicleInput] || "").trim(),
-      );
       return {
         ...nextVehicle,
         featureClarificationQuestions: [
