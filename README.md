@@ -46,6 +46,7 @@ Optional:
 
 ```bash
 OPENAI_MODEL=gpt-4o-mini
+OPENAI_RESEARCH_MODEL=gpt-4o-mini
 ```
 
 ## Supabase Setup
@@ -54,7 +55,7 @@ OPENAI_MODEL=gpt-4o-mini
 2. Copy the URL and anon key into `.env.local`.
 3. Copy the service role key into `.env.local`.
 4. Run the SQL migrations in order from `supabase/migrations/`.
-   - Fresh setup: run `0001`, then `0002`, then `0003`.
+   - Fresh setup: run `0001` through `0006` in numeric order.
    - Existing setup that already ran the first migration: run the newer migration files you have not applied yet.
 5. Enable email/password authentication in Supabase Auth.
 6. Configure the site URL and redirect URL, for example:
@@ -92,6 +93,9 @@ The migration creates:
 - `bulk_inventory_items`
 - `listing_images`
 - `app_admins`
+- `vehicle_drafts`
+- `vehicle_draft_sources`
+- `vehicle_trim_research_cache`
 
 Helper functions:
 
@@ -110,9 +114,13 @@ All OpenAI calls run server-side only:
 
 - `POST /api/style/analyze`
 - `POST /api/generate-listing`
+- `POST /api/trim/research`
+- `POST /api/fill-in/source-text`
 - internal `analyzeVehicleInputQuality(input)`
 
 The generation prompt instructs the model not to invent specs, warranty, title status, accident history, ownership history, service history, financing terms, or condition claims. Human review is recommended before publishing listings.
+
+Trim research uses the OpenAI Responses API with web search when NHTSA data is not enough. Results include citations, are cached for 180 days by year/make/model/market, and remain supporting evidence until dealership staff confirms the vehicle identity and specifications.
 
 ## Local Development
 
@@ -142,11 +150,11 @@ The app is Vercel-ready and uses Next.js route handlers for server-only API beha
 
 ## Trial And Rate Limits
 
-Free trial = 35 generations per month per dealership.
+Free workspace trial = 10 generations per month per dealership.
 
 Plan limits:
 
-- `trial`: 35/month
+- `trial`: 10/month
 - `starter_demo`: 150/month
 - `pro_demo`: 500/month
 - `unlimited_demo`: unlimited test generations
@@ -216,7 +224,7 @@ Vehicle image handling is limited to tracking image URLs and photo notes against
 
 ## Operations Features
 
-- Bulk inventory intake accepts CSV/spreadsheet rows and saves validated intake batches.
+- Bulk inventory intake accepts CSV/spreadsheet rows, saves validated batches, and provides a persistent Previous/Next workbench tied to shared vehicle drafts.
 - Claim Risk Auditor flags unsupported claims such as clean title, no accidents, one-owner, warranty, financing, service history, and absolute condition language.
 - Approval statuses include draft, pending review, changes requested, approved, and published.
 - Feature events and audit logs support dealership analytics and founder admin visibility.
@@ -224,6 +232,6 @@ Vehicle image handling is limited to tracking image URLs and photo notes against
 
 ## Product Notes
 
-The MVP intentionally does not include real Stripe payments, CRM features, lead management, automated publishing, fake testimonials, fake customer logos, fake integrations, or invented VIN data.
+The MVP intentionally does not include CRM features, lead management, automated publishing, fake testimonials, fake customer logos, fake integrations, or invented VIN data. Real Stripe subscription collection is implemented, but production launch still requires live Stripe products, prices, webhook configuration, and end-to-end live-mode verification.
 
 Held for later: paid/commercial VIN data integrations, window sticker data, build-sheet enrichment, and AI/photo-assisted vehicle feature extraction.

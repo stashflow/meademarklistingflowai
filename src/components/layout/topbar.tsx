@@ -8,15 +8,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { AppSidebar } from "./app-sidebar";
+import type { DealershipRole } from "@/types/dealership";
 
 export function Topbar({
   dealershipName,
   userEmail,
   isAdmin = false,
+  role = null,
 }: {
   dealershipName?: string | null;
   userEmail?: string | null;
   isAdmin?: boolean;
+  role?: DealershipRole | null;
 }) {
   return (
     <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0B0D10]/88 backdrop-blur-xl">
@@ -27,7 +30,7 @@ export function Topbar({
               <Menu className="h-5 w-5" />
             </SheetTrigger>
             <SheetContent side="left" className="w-72 border-white/10 bg-[#0B0D10] p-0">
-              <AppSidebar mobile isAdmin={isAdmin} />
+              <AppSidebar mobile isAdmin={isAdmin} role={role} />
             </SheetContent>
           </Sheet>
           <div className="min-w-0">

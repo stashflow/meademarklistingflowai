@@ -15,23 +15,25 @@ import {
 } from "lucide-react";
 import { BrandMark } from "@/components/common/brand-mark";
 import { cn } from "@/lib/utils";
+import type { DealershipRole } from "@/types/dealership";
 
 const nav = [
-  { href: "/dashboard", label: "Dashboard", icon: Gauge },
-  { href: "/dashboard/new-listing", label: "New Listing", icon: Car },
-  { href: "/dashboard/bulk-intake", label: "Bulk Intake", icon: FileSpreadsheet },
-  { href: "/dashboard/saved-listings", label: "Saved Listings", icon: Library },
-  { href: "/dashboard/style-library", label: "Style Library", icon: Palette },
-  { href: "/dashboard/team", label: "Team", icon: Users },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
-  { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
+  { href: "/dashboard", label: "Dashboard", icon: Gauge, roles: ["owner","admin","manager","staff"] },
+  { href: "/dashboard/new-listing", label: "New Listing", icon: Car, roles: ["owner","admin","manager","staff"] },
+  { href: "/dashboard/bulk-intake", label: "Bulk Intake", icon: FileSpreadsheet, roles: ["owner","admin","manager","staff"] },
+  { href: "/dashboard/saved-listings", label: "Saved Listings", icon: Library, roles: ["owner","admin","manager","staff"] },
+  { href: "/dashboard/style-library", label: "Style Library", icon: Palette, roles: ["owner","admin","manager","staff"] },
+  { href: "/dashboard/team", label: "Team", icon: Users, roles: ["owner","admin","manager"] },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings, roles: ["owner","admin","manager","staff"] },
+  { href: "/dashboard/billing", label: "Billing", icon: CreditCard, roles: ["owner"] },
 ];
 
-export function AppSidebar({ mobile = false, isAdmin = false }: { mobile?: boolean; isAdmin?: boolean }) {
+export function AppSidebar({ mobile = false, isAdmin = false, role = null }: { mobile?: boolean; isAdmin?: boolean; role?: DealershipRole | null }) {
   const pathname = usePathname();
+  const roleNav = nav.filter((item) => !role || item.roles.includes(role));
   const visibleNav = isAdmin
-    ? [...nav, { href: "/dashboard/admin", label: "Founder Admin", icon: ShieldCheck }]
-    : nav;
+    ? [...roleNav, { href: "/dashboard/admin", label: "Founder Admin", icon: ShieldCheck, roles: ["owner"] }]
+    : roleNav;
 
   return (
     <aside className={`${mobile ? "block" : "hidden lg:block"} min-h-screen w-72 border-r border-white/10 bg-[#080A0D]/95 p-5`}>
@@ -56,9 +58,9 @@ export function AppSidebar({ mobile = false, isAdmin = false }: { mobile?: boole
         ))}
       </nav>
       <div className="mt-8 rounded-2xl border border-white/10 bg-[#10151F] p-4">
-        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-red-100">Operator note</div>
+        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-red-100">Listing safeguard</div>
         <p className="mt-3 text-xs leading-5 text-muted-foreground">
-          Demo billing mode is test-only. No real payments are processed.
+          Review vehicle facts and sensitive claims before publishing.
         </p>
       </div>
     </aside>

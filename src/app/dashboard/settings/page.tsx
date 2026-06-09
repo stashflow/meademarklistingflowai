@@ -16,7 +16,7 @@ export default async function SettingsPage() {
     : { data: null };
 
   return (
-    <main className="p-6">
+    <main className="p-3 md:p-5">
       <SettingsManager
         profile={profile}
         dealership={dealership}

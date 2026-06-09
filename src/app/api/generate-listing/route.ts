@@ -13,8 +13,15 @@ import {
   listingGenerationRequestSchema,
 } from "@/lib/validators/listing";
 
-const trialLimitMessage =
-  "You’ve reached the 35-generation monthly trial limit for this dealership. Upgrade testing can be enabled in the demo billing settings, or wait until the next monthly reset.";
+function planLimitMessage(status: string, limit: number | "unlimited") {
+  if (status === "past_due") {
+    return "Listing generation is paused because this dealership’s subscription payment is past due. The dealership owner can update payment details in Billing.";
+  }
+  if (status === "canceled") {
+    return "Listing generation is paused because this dealership’s subscription is canceled. The dealership owner can restart a plan in Billing.";
+  }
+  return `You’ve reached the ${limit}-generation monthly free trial limit for this dealership. Choose a paid plan to continue generating, or wait until the next monthly reset.`;
+}
 
 export async function POST(request: Request) {
   try {
@@ -100,7 +107,7 @@ export async function POST(request: Request) {
 
     if (!planCheck.allowed) {
       return NextResponse.json(
-        { error: true, code: "TRIAL_LIMIT_REACHED", message: trialLimitMessage },
+        { error: true, code: "PLAN_LIMIT_REACHED", message: planLimitMessage(dealership.subscription_status, planCheck.limit) },
         { status: 402 },
       );
     }

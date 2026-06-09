@@ -7,9 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  --font-heading: "Arial Black", Impact, Haettenschweiler, "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+  --font-heading: "Barlow Condensed", "Arial Narrow", sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -72,7 +72,7 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 0.875rem;
   --sidebar: #111827;
   --sidebar-foreground: #f8fafc;
   --sidebar-primary: #dc2626;
@@ -133,20 +133,12 @@
 
   html[data-motion="amaze"] body {
     background:
-      linear-gradient(90deg, rgb(255 255 255 / 4%) 1px, transparent 1px),
-      linear-gradient(rgb(255 255 255 / 3%) 1px, transparent 1px),
-      linear-gradient(115deg, rgb(220 38 38 / 16%) 0%, transparent 24%, transparent 72%, rgb(255 255 255 / 4%) 100%),
-      linear-gradient(180deg, #0b0d10 0%, #10151f 52%, #0b0d10 100%);
-    background-size: 70px 70px, 70px 70px, auto, auto;
+      radial-gradient(circle at 50% -20%, rgb(220 38 38 / 13%), transparent 34rem),
+      #0b0d10;
   }
   body {
     @apply bg-background text-foreground;
-    background:
-      linear-gradient(90deg, rgb(255 255 255 / 3%) 1px, transparent 1px),
-      linear-gradient(rgb(255 255 255 / 2.5%) 1px, transparent 1px),
-      linear-gradient(115deg, rgb(220 38 38 / 11%) 0%, transparent 26%, transparent 70%, rgb(255 255 255 / 3%) 100%),
-      linear-gradient(180deg, #0b0d10 0%, #10151f 52%, #0b0d10 100%);
-    background-size: 84px 84px, 84px 84px, auto, auto;
+    background: #0b0d10;
     font-family: var(--font-sans);
     font-synthesis: none;
     text-rendering: optimizeLegibility;
@@ -166,7 +158,7 @@
 
 @layer components {
   .app-card {
-    @apply border-white/10 bg-[#10141B]/90 shadow-[0_20px_80px_rgba(0,0,0,.28)];
+    @apply border-white/10 bg-[#10141B] shadow-[0_16px_48px_rgba(0,0,0,.22)];
   }
 
   .muted-panel {
@@ -180,10 +172,7 @@
   }
 
   .industrial-grid {
-    background-image:
-      linear-gradient(90deg, rgb(255 255 255 / 4.5%) 1px, transparent 1px),
-      linear-gradient(rgb(255 255 255 / 3.5%) 1px, transparent 1px);
-    background-size: 84px 84px;
+    background-image: linear-gradient(180deg, rgb(255 255 255 / 2.5%), transparent 34%);
   }
 
   .redline {

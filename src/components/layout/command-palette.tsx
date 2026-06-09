@@ -28,6 +28,8 @@ export function CommandPalette({ isAdmin }: { isAdmin: boolean }) {
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      const element = event.target as HTMLElement | null;
+      if (element?.closest("input, textarea, select, [contenteditable='true'], [role='textbox']")) return;
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setOpen((current) => !current);

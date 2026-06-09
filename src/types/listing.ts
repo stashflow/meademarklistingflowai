@@ -33,6 +33,100 @@ export type FeatureHighlight = {
   question?: string;
 };
 
+export type ListingPlatform = "facebook" | "cargurus" | "website";
+
+export type PlatformCopyBlocks = {
+  title: string;
+  price: string;
+  description: string;
+  features: string[];
+  condition: string;
+  cta: string;
+  disclaimer: string;
+};
+
+export type VehicleDraft = {
+  id: string;
+  dealership_id: string;
+  created_by: string;
+  last_edited_by: string | null;
+  listing_id: string | null;
+  batch_item_id: string | null;
+  input_data: VehicleInput;
+  preferences: GenerationPreferences;
+  generated_output: ListingOutput | null;
+  current_step: "facts" | "fill_in" | "copy";
+  active_platform: ListingPlatform;
+  status: "draft" | "ready" | "generated" | "published" | "archived";
+  title: string | null;
+  vin: string | null;
+  stock_number: string | null;
+  year: string | null;
+  make: string | null;
+  model: string | null;
+  trim: string | null;
+  exterior_color: string | null;
+  autosave_version: number;
+  last_generated_at: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DraftSourceConflict = {
+  field: keyof VehicleInput;
+  existingValue: string;
+  extractedValue: string;
+  confidence: "low" | "medium" | "high";
+  source: string;
+};
+
+export type TrimResearchSource = {
+  label: string;
+  url: string;
+};
+
+export type TrimCandidate = {
+  name: string;
+  confidence: "low" | "medium" | "high";
+  indicators: string[];
+  summary: string;
+};
+
+export type TrimSpecification = {
+  trim: string;
+  engine?: string;
+  transmission?: string;
+  drivetrain?: string;
+  fuelType?: string;
+  mpg?: string;
+  features: string[];
+  variableFields: string[];
+};
+
+export type TrimResearchQuestion = {
+  id: string;
+  label: string;
+  helper: string;
+  why: string;
+  inputType: "choice" | "yes_no_unknown" | "text";
+  options: Array<{
+    label: string;
+    supportsTrims: string[];
+  }>;
+};
+
+export type TrimResearchResult = {
+  researchKey: string;
+  fromCache: boolean;
+  candidates: TrimCandidate[];
+  specifications: TrimSpecification[];
+  questions: TrimResearchQuestion[];
+  sources: TrimResearchSource[];
+  confidence: "low" | "medium" | "high";
+  warning: string;
+};
+
 export type VehicleInput = {
   vin?: string;
   vinDecoded?: string;
@@ -102,6 +196,7 @@ export type ListingOutput = {
   title: string;
   shortTitle: string;
   facebookListing: string;
+  carGurusListing: string;
   websiteDescription: string;
   craigslistListing: string;
   autoTraderStyleDescription: string;
@@ -116,6 +211,7 @@ export type ListingOutput = {
   featureHighlights?: FeatureHighlight[];
   featureQuestions?: string[];
   claimRiskAudit?: ClaimRiskAudit;
+  copyBlocks?: Partial<Record<ListingPlatform, PlatformCopyBlocks>>;
 };
 
 export type SavedListing = {

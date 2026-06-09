@@ -68,6 +68,16 @@ export function getStripePriceId(plan: BillingPlanKey, interval: BillingInterval
   return priceId;
 }
 
+export function stripeBillingConfigured() {
+  return Boolean(
+    process.env.STRIPE_SECRET_KEY &&
+    process.env.STRIPE_WEBHOOK_SECRET &&
+    Object.values(BILLING_PLANS).every(
+      (plan) => process.env[plan.monthlyEnv] && process.env[plan.yearlyEnv],
+    ),
+  );
+}
+
 export function statusFromPriceId(priceId?: string | null): SubscriptionStatus {
   for (const plan of Object.values(BILLING_PLANS)) {
     if (priceId && (priceId === process.env[plan.monthlyEnv] || priceId === process.env[plan.yearlyEnv])) {

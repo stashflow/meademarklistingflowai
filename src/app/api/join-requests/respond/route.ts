@@ -6,7 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 const schema = z.object({
   requestId: z.string().uuid(),
   action: z.enum(["approve", "reject"]),
-  role: z.enum(["admin", "manager", "staff"]).default("staff"),
+  role: z.enum(["manager", "staff"]).default("staff"),
 });
 
 export async function POST(request: Request) {

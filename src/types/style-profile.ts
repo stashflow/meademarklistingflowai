@@ -8,6 +8,7 @@ export type FormattingRules = {
 
 export type PlatformPreferences = {
   facebook?: string;
+  cargurus?: string;
   website?: string;
   craigslist?: string;
   autotrader?: string;

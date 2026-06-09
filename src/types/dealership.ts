@@ -20,7 +20,17 @@ export type Profile = {
   onboarding_completed: boolean;
   active_dealership_id: string | null;
   animation_preference: "none" | "simple" | "amaze";
-  feature_settings: Record<string, boolean | string>;
+  feature_settings: {
+    qualityScore?: boolean;
+    desktopNotifications?: boolean;
+    fastDraftMode?: boolean;
+    autoCopyLastOutput?: boolean;
+    vinDataProvider?: string;
+    autoOpenFillIn?: boolean;
+    fillInIntroSeen?: boolean;
+    workspaceMode?: "compact" | "manager";
+    [key: string]: boolean | string | undefined;
+  };
   created_at: string;
   updated_at: string;
 };
@@ -35,6 +45,7 @@ export type Dealership = {
   default_tone: string | null;
   default_cta: string | null;
   default_disclaimer: string | null;
+  listing_defaults: ListingDefaults;
   trial_generation_limit: number;
   subscription_status: SubscriptionStatus;
   fake_paid_mode: boolean;
@@ -46,6 +57,23 @@ export type Dealership = {
   billing_email: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type PlatformListingPreference = {
+  tone: string;
+  length: "short" | "standard" | "detailed";
+};
+
+export type ListingDefaults = {
+  contactText?: string;
+  defaultCTA?: string;
+  financingLanguage?: string;
+  warrantyLanguage?: string;
+  platforms?: {
+    facebook?: PlatformListingPreference;
+    cargurus?: PlatformListingPreference;
+    website?: PlatformListingPreference;
+  };
 };
 
 export type DealershipMember = {
@@ -73,15 +101,15 @@ export type JoinRequest = {
 export type PlanLimit = number | "unlimited";
 
 export const PLAN_LIMITS: Record<SubscriptionStatus, PlanLimit> = {
-  trial: 35,
+  trial: 10,
   starter_demo: 150,
   pro_demo: 500,
   unlimited_demo: "unlimited",
   starter: 150,
   pro: 500,
   dealer_group: "unlimited",
-  past_due: 35,
-  canceled: 35,
+  past_due: 0,
+  canceled: 0,
 };
 
 export const ROLE_LABELS: Record<DealershipRole, string> = {

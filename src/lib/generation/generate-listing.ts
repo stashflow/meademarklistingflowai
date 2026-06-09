@@ -7,12 +7,14 @@ export async function generateVehicleListing(
   styleProfile: DealershipStyleProfile | null,
 ) {
   const client = getOpenAIClient();
-
-  const completion = await client.chat.completions.create({
-    model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-    temperature: 0.55,
-    response_format: { type: "json_object" },
-    messages: [
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const completion = await client.chat.completions.create({
+        model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+        temperature: attempt === 0 ? 0.45 : 0.25,
+        response_format: { type: "json_object" },
+        messages: [
       {
         role: "system",
         content:
@@ -25,6 +27,7 @@ export async function generateVehicleListing(
   "title": "",
   "shortTitle": "",
   "facebookListing": "",
+  "carGurusListing": "",
   "websiteDescription": "",
   "craigslistListing": "",
   "autoTraderStyleDescription": "",
@@ -37,7 +40,12 @@ export async function generateVehicleListing(
   "disclaimer": "",
   "reviewWarnings": [],
   "featureHighlights": [],
-  "featureQuestions": []
+  "featureQuestions": [],
+  "copyBlocks": {
+    "facebook": {"title":"","price":"","description":"","features":[],"condition":"","cta":"","disclaimer":""},
+    "cargurus": {"title":"","price":"","description":"","features":[],"condition":"","cta":"","disclaimer":""},
+    "website": {"title":"","price":"","description":"","features":[],"condition":"","cta":"","disclaimer":""}
+  }
 }
 
 Generation rules:
@@ -45,6 +53,7 @@ Generation rules:
 - VIN decoded fields may be used only as provided in the request. Do not add specs beyond decoded or staff-entered fields.
 - Vehicle intelligence, safety, recall, and value notes may be used only when supplied in the request. NHTSA recall lookup does not prove whether recalls are open or completed.
 - If validatedFeaturesJson is supplied, use those features as the feature source of truth. Do not upgrade unsure features to confirmed.
+- Only confirmed features may appear in public-facing listing copy. Keep likely, unsure, and ask_user features in featureHighlights, featureQuestions, and reviewWarnings until staff confirms them.
 - Feature highlights must be machine-readable objects with label, status, source, reason, and optional question.
 - If a feature status is unsure or ask_user, keep uncertainty clear in reviewWarnings and featureQuestions.
 - Never invent warranty, accident history, service history, ownership history, financing terms, or title status.
@@ -59,6 +68,7 @@ Generation rules:
 
 Platform behavior:
 Facebook: natural, scannable, strong opening, bullets allowed, clear CTA.
+CarGurus: concise, factual, inventory-focused, easy to scan, no unsupported claims or excessive formatting.
 Website: polished, professional, SEO-friendly, no excessive hype.
 Craigslist: direct, practical, simple, clear details.
 SEO: short, searchable, clean.
@@ -69,10 +79,15 @@ ${JSON.stringify(request, null, 2)}
 Saved dealership style profile:
 ${request.preferences.useStyleProfile ? JSON.stringify(styleProfile, null, 2) : "Not used for this generation."}`,
       },
-    ],
-  });
+        ],
+      });
 
-  const content = completion.choices[0]?.message?.content;
-  if (!content) throw new Error("Listing generation returned no content.");
-  return parseStrictJson<ListingOutput>(content);
+      const content = completion.choices[0]?.message?.content;
+      if (!content) throw new Error("Listing generation returned no content.");
+      return parseStrictJson<ListingOutput>(content);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Listing generation could not complete.");
 }

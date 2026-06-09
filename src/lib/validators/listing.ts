@@ -63,7 +63,7 @@ export const generationPreferencesSchema = z.object({
   tone: z.string().min(1),
   length: z.enum(["short", "standard", "detailed"]),
   useStyleProfile: z.boolean(),
-  customInstructions: z.string().max(1000).optional(),
+  customInstructions: z.string().max(6000).optional(),
   wordsToAvoid: z.string().max(600).optional(),
   ctaOverride: z.string().max(400).optional(),
 });

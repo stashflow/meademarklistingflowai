@@ -13,6 +13,7 @@ import type { ListingImage, ListingOutput, ListingStatus, SavedListing } from "@
 
 const tabs: Array<[keyof ListingOutput, string]> = [
   ["facebookListing", "Facebook"],
+  ["carGurusListing", "CarGurus"],
   ["websiteDescription", "Website"],
   ["craigslistListing", "Craigslist"],
   ["autoTraderStyleDescription", "AutoTrader"],
@@ -118,7 +119,7 @@ export function ListingDetailEditor({ listing, images = [] }: { listing: SavedLi
           </div>
         )}
         <Tabs defaultValue="facebookListing">
-          <TabsList className="grid grid-cols-6">
+          <TabsList className="grid grid-cols-7">
             {tabs.map(([key, label]) => <TabsTrigger key={key} value={key}>{label}</TabsTrigger>)}
           </TabsList>
           {tabs.map(([key, label]) => {

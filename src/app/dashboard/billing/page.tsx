@@ -1,6 +1,7 @@
 import { BillingPanel } from "@/components/billing/billing-panel";
 import { getDealershipContext } from "@/lib/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { stripeBillingConfigured } from "@/lib/stripe/config";
 
 export default async function BillingPage() {
   const supabase = await createSupabaseServerClient();
@@ -16,10 +17,10 @@ export default async function BillingPage() {
       <div>
         <h1 className="text-3xl font-semibold">Billing</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Demo billing mode. No real payment is processed.
+          Manage the dealership subscription or use clearly marked demo plans for internal testing.
         </p>
       </div>
-      <BillingPanel dealership={dealership} canToggle={member?.role === "owner"} />
+      <BillingPanel dealership={dealership} canToggle={member?.role === "owner"} stripeConfigured={stripeBillingConfigured()} />
     </main>
   );
 }

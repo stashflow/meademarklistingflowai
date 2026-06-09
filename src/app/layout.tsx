@@ -1,7 +1,16 @@
 import type { Metadata } from "next";
+import { Barlow_Condensed, Geist, Geist_Mono } from "next/font/google";
 import { MotionPreferencesProvider } from "@/components/common/motion-preferences";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
+
+const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
+const displayFont = Barlow_Condensed({
+  subsets: ["latin"],
+  variable: "--font-listingflow-display",
+  weight: ["500", "600", "700"],
+});
 
 export const metadata: Metadata = {
   title: "ListingFlow AI | MeadeMark Labs",
@@ -21,7 +30,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className="dark h-full antialiased"
+      className={`dark h-full antialiased ${geistSans.variable} ${geistMono.variable} ${displayFont.variable}`}
     >
       <body className="min-h-full flex flex-col">
         <MotionPreferencesProvider>

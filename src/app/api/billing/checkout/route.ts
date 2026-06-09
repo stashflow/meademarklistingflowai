@@ -31,8 +31,23 @@ export async function POST(request: Request) {
     }
 
     const stripe = getStripeClient();
+    const priceId = getStripePriceId(parsed.data.plan, parsed.data.interval);
     const origin = new URL(request.url).origin;
     let customerId = dealership.stripe_customer_id;
+
+    if (
+      dealership.stripe_subscription_id &&
+      ["starter", "pro", "dealer_group"].includes(dealership.subscription_status)
+    ) {
+      return NextResponse.json(
+        {
+          error: true,
+          code: "SUBSCRIPTION_EXISTS",
+          message: "This dealership already has a subscription. Use Manage subscription to change plans or billing details.",
+        },
+        { status: 409 },
+      );
+    }
 
     if (!customerId) {
       const customer = await stripe.customers.create({
@@ -53,9 +68,9 @@ export async function POST(request: Request) {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
-      line_items: [{ price: getStripePriceId(parsed.data.plan, parsed.data.interval), quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: {
-        trial_period_days: 7,
+        ...(dealership.trial_ends_at || dealership.stripe_subscription_id ? {} : { trial_period_days: 7 }),
         metadata: {
           dealershipId: dealership.id,
           plan: parsed.data.plan,
@@ -69,6 +84,7 @@ export async function POST(request: Request) {
       },
       success_url: `${origin}/dashboard/billing?checkout=success`,
       cancel_url: `${origin}/dashboard/billing?checkout=cancelled`,
+      client_reference_id: dealership.id,
     });
 
     return NextResponse.json({ url: session.url });

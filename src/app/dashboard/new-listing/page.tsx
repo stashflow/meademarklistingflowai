@@ -9,7 +9,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export default async function NewListingPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ vin?: string }>;
+  searchParams?: Promise<{ vin?: string; draft?: string }>;
 }) {
   const params = await searchParams;
   const initialVin = params?.vin?.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g, "").slice(0, 17) || "";
@@ -18,12 +18,27 @@ export default async function NewListingPage({
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
-  const { dealership } = await getDealershipContext(supabase, user.id);
+  const { dealership, profile } = await getDealershipContext(supabase, user.id);
+  const { data: initialDraft } = dealership && params?.draft
+    ? await supabase
+        .from("vehicle_drafts")
+        .select("*")
+        .eq("id", params.draft)
+        .eq("dealership_id", dealership.id)
+        .maybeSingle()
+    : { data: null };
 
   return (
-    <main className="p-6">
+    <main className="p-3 md:p-5">
       {dealership ? (
-        <ListingGenerator dealershipId={dealership.id} initialVin={initialVin} />
+        <ListingGenerator
+          dealershipId={dealership.id}
+          initialVin={initialVin}
+          listingDefaults={dealership.listing_defaults || {}}
+          autoOpenFillIn={profile?.feature_settings?.autoOpenFillIn !== false}
+          fillInIntroSeen={Boolean(profile?.feature_settings?.fillInIntroSeen)}
+          initialDraft={initialDraft}
+        />
       ) : (
         <EmptyState
           icon={Palette}

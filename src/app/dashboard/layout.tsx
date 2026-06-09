@@ -5,6 +5,7 @@ import { Topbar } from "@/components/layout/topbar";
 import { isConfiguredAppAdmin } from "@/lib/admin";
 import { getDealershipContext } from "@/lib/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { DealershipRole } from "@/types/dealership";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   let dealershipName: string | null = null;
   let userEmail: string | null = null;
   let isAdmin = false;
+  let role: DealershipRole | null = null;
 
   try {
     const supabase = await createSupabaseServerClient();
@@ -23,6 +25,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     if (user) {
       const context = await getDealershipContext(supabase, user.id);
       dealershipName = context.dealership?.name || null;
+      role = context.member?.role || null;
     }
   } catch {
     dealershipName = null;
@@ -30,9 +33,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="flex min-h-screen">
-      <AppSidebar isAdmin={isAdmin} />
+      <AppSidebar isAdmin={isAdmin} role={role} />
       <div className="min-w-0 flex-1">
-        <Topbar dealershipName={dealershipName} userEmail={userEmail} isAdmin={isAdmin} />
+        <Topbar dealershipName={dealershipName} userEmail={userEmail} isAdmin={isAdmin} role={role} />
         <CommandPalette isAdmin={isAdmin} />
         <FeatureTracker />
         {children}

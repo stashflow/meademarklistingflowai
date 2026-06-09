@@ -13,15 +13,17 @@ const plans: Array<{ status: SubscriptionStatus; name: string; limit: string; ac
   { status: "starter_demo", name: "Starter Demo", limit: "150 generations/month", action: "Activate Starter Demo" },
   { status: "pro_demo", name: "Pro Demo", limit: "500 generations/month", action: "Activate Pro Demo" },
   { status: "unlimited_demo", name: "Unlimited Demo", limit: "Unlimited test generations", action: "Activate Unlimited Demo" },
-  { status: "trial", name: "Free Trial", limit: "35 generations/month", action: "Return to Free Trial" },
+  { status: "trial", name: "Free Trial", limit: "10 generations/month", action: "Return to Free Trial" },
 ];
 
 export function BillingPanel({
   dealership,
   canToggle,
+  stripeConfigured,
 }: {
   dealership: Dealership;
   canToggle: boolean;
+  stripeConfigured: boolean;
 }) {
   const router = useRouter();
   const [current, setCurrent] = useState(dealership);
@@ -94,7 +96,7 @@ export function BillingPanel({
           </div>
           <div className="rounded-md border border-white/10 bg-white/5 p-4">
             <div className="text-xs text-muted-foreground">Trial limit</div>
-            <div className="mt-2 text-xl font-semibold">35/month</div>
+            <div className="mt-2 text-xl font-semibold">{current.trial_generation_limit}/month</div>
           </div>
           <div className="rounded-md border border-red-500/20 bg-red-500/10 p-4">
             <div className="text-xs text-red-200">{current.fake_paid_mode ? "Demo billing mode" : "Stripe billing"}</div>
@@ -106,6 +108,11 @@ export function BillingPanel({
       </Card>
 
       {message && <div className="rounded-md border border-white/10 bg-white/5 p-4 text-sm text-muted-foreground">{message}</div>}
+      {!stripeConfigured && (
+        <div className="rounded-md border border-amber-400/20 bg-amber-400/[.06] p-4 text-sm text-amber-100">
+          Stripe checkout is not configured yet. Add the Stripe secret, webhook secret, and all six price IDs before accepting payments.
+        </div>
+      )}
 
       <Card className="app-card">
         <CardHeader>
@@ -131,7 +138,7 @@ export function BillingPanel({
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <Button
-                      disabled={!canToggle || checkoutLoading === `${key}-monthly`}
+                      disabled={!canToggle || !stripeConfigured || checkoutLoading === `${key}-monthly`}
                       onClick={() => startCheckout(key, "monthly")}
                       className="bg-primary hover:bg-red-700"
                     >
@@ -139,7 +146,7 @@ export function BillingPanel({
                       {plan.monthlyPrice}
                     </Button>
                     <Button
-                      disabled={!canToggle || checkoutLoading === `${key}-yearly`}
+                      disabled={!canToggle || !stripeConfigured || checkoutLoading === `${key}-yearly`}
                       onClick={() => startCheckout(key, "yearly")}
                       variant="outline"
                       className="border-white/10 bg-white/5"
@@ -153,7 +160,7 @@ export function BillingPanel({
             ))}
           </div>
           <Button
-            disabled={!canToggle || portalLoading || !current.stripe_customer_id}
+            disabled={!canToggle || !stripeConfigured || portalLoading || !current.stripe_customer_id}
             onClick={openPortal}
             variant="outline"
             className="border-white/10 bg-white/5"

@@ -25,7 +25,7 @@ create table public.dealerships (
   default_tone text,
   default_cta text,
   default_disclaimer text,
-  trial_generation_limit integer not null default 35,
+  trial_generation_limit integer not null default 10,
   subscription_status text not null default 'trial' check (subscription_status in ('trial','starter_demo','pro_demo','unlimited_demo')),
   fake_paid_mode boolean not null default false,
   created_at timestamptz not null default now(),

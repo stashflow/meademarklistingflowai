@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
-import { CheckCircle2, FileSpreadsheet, Save, Send, Upload } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { FileSpreadsheet, Save, Send, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { deterministicVehicleValidation } from "@/lib/validators/listing";
-import type { BulkInventoryBatch, VehicleInput } from "@/types/listing";
+import type { VehicleInput } from "@/types/listing";
 
 const aliases: Record<string, keyof VehicleInput> = {
   vin: "vin",
@@ -95,11 +95,11 @@ function parseInventory(raw: string) {
 }
 
 export function BulkInventoryIntake({ dealershipId }: { dealershipId: string }) {
+  const router = useRouter();
   const [batchName, setBatchName] = useState(`Inventory intake ${new Date().toLocaleDateString()}`);
   const [rawCsv, setRawCsv] = useState(sampleCsv);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
-  const [savedBatch, setSavedBatch] = useState<BulkInventoryBatch | null>(null);
 
   const rows = useMemo(() => parseInventory(rawCsv), [rawCsv]);
   const readyCount = rows.filter((row) => row.validation.canGenerate).length;
@@ -152,8 +152,7 @@ export function BulkInventoryIntake({ dealershipId }: { dealershipId: string }) 
         metadata: { rowCount: rows.length, readyCount, issueCount },
       });
 
-      setSavedBatch(batch as BulkInventoryBatch);
-      setMessage("Bulk intake batch saved. Staff can stage ready rows into the generator.");
+      router.push(`/dashboard/bulk-intake/${batch.id}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not save the intake batch.");
     } finally {
@@ -161,8 +160,31 @@ export function BulkInventoryIntake({ dealershipId }: { dealershipId: string }) 
     }
   }
 
-  function stageInGenerator(input: VehicleInput) {
-    window.localStorage.setItem("listingflow-draft-vehicle", JSON.stringify(input));
+  async function openInWorkspace(input: VehicleInput, batchItemId?: string) {
+    setSaving(true);
+    try {
+      const response = await fetch("/api/drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dealershipId,
+          inputData: input,
+          batchItemId,
+          preferences: {
+            platforms: ["Facebook Marketplace", "CarGurus", "Dealer Website"],
+            tone: "Use dealership default",
+            length: "standard",
+            useStyleProfile: true,
+          },
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message || "Could not start this vehicle.");
+      router.push(`/dashboard/new-listing?draft=${payload.draft.id}`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not start this vehicle.");
+      setSaving(false);
+    }
   }
 
   return (
@@ -251,15 +273,14 @@ export function BulkInventoryIntake({ dealershipId }: { dealershipId: string }) 
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
-                          asChild
+                          type="button"
                           variant="outline"
                           size="sm"
                           className="border-white/10 bg-white/5"
+                          onClick={() => openInWorkspace(row.input)}
                         >
-                          <Link href="/dashboard/new-listing" onClick={() => stageInGenerator(row.input)}>
-                            <Send className="h-4 w-4" />
-                            Stage
-                          </Link>
+                          <Send className="h-4 w-4" />
+                          Open
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -271,12 +292,6 @@ export function BulkInventoryIntake({ dealershipId }: { dealershipId: string }) 
               <div className="mt-4 rounded-xl border border-white/10 bg-white/[.035] p-6 text-center text-sm text-muted-foreground">
                 <FileSpreadsheet className="mx-auto mb-3 h-6 w-6" />
                 Paste CSV rows to preview the batch.
-              </div>
-            )}
-            {savedBatch && (
-              <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm text-emerald-100">
-                <CheckCircle2 className="h-4 w-4" />
-                Saved batch: {savedBatch.name}
               </div>
             )}
           </CardContent>

@@ -79,6 +79,7 @@ function outputToText(output: ListingOutput) {
     output.title,
     output.shortTitle,
     output.facebookListing,
+    output.carGurusListing,
     output.websiteDescription,
     output.craigslistListing,
     output.autoTraderStyleDescription,

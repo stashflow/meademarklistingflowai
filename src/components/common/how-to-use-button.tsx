@@ -83,12 +83,12 @@ const helpByPath = [
   {
     match: "/dashboard/billing",
     title: "How to use billing",
-    intro: "Billing is demo-only right now. It lets you test plan behavior without charging anyone.",
+    intro: "Billing includes Stripe subscriptions plus clearly separated demo controls for internal plan testing.",
     steps: [
       "Review current trial usage and monthly generation limits.",
-      "Owners can toggle demo plans to test higher limits.",
-      "No real payment is processed, and Stripe is not connected yet.",
-      "Return to Free Trial when you want to test the normal 35-generation limit.",
+      "Owners can start a real monthly or yearly Stripe subscription when Stripe is configured.",
+      "Demo plan buttons never process payment and are only for testing limits.",
+      "Return to Free Trial when you want to test the normal 10-generation limit.",
     ],
   },
   {

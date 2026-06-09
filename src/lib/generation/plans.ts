@@ -1,6 +1,10 @@
 import { PLAN_LIMITS, type Dealership, type SubscriptionStatus } from "@/types/dealership";
 
 export function getPlanLimit(status: SubscriptionStatus, fakePaidMode: boolean) {
+  if (status === "starter" || status === "pro" || status === "dealer_group" || status === "past_due" || status === "canceled") {
+    return PLAN_LIMITS[status];
+  }
+
   if (fakePaidMode && status !== "trial") {
     return PLAN_LIMITS[status];
   }
@@ -9,7 +13,10 @@ export function getPlanLimit(status: SubscriptionStatus, fakePaidMode: boolean) 
 }
 
 export function canGenerateForPlan(dealership: Dealership, currentCount: number) {
-  const limit = getPlanLimit(dealership.subscription_status, dealership.fake_paid_mode);
+  const configuredLimit = getPlanLimit(dealership.subscription_status, dealership.fake_paid_mode);
+  const limit = dealership.subscription_status === "trial"
+    ? dealership.trial_generation_limit
+    : configuredLimit;
 
   if (limit === "unlimited") {
     return { allowed: true, limit, remaining: "unlimited" as const };

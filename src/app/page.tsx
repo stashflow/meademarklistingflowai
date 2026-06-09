@@ -27,7 +27,7 @@ const steps = [
 const trustFeatures: Array<[LucideIcon, string, string]> = [
   [ClipboardCheck, "VIN-first intake", "Decode a VIN into editable baseline details, then add mileage, condition notes, selling points, and staff-confirmed claims."],
   [ShieldCheck, "Honest generation", "The AI is instructed not to invent title, accident, warranty, ownership, financing, or service claims."],
-  [Gauge, "Trial controls", "The 35-generation trial limit is enforced server-side. Demo billing exists only for testing plan behavior."],
+  [Gauge, "Trial controls", "The 10-generation free limit is enforced server-side. Demo billing exists only for testing plan behavior."],
 ];
 
 export default function LandingPage() {
@@ -81,11 +81,11 @@ export default function LandingPage() {
             </Button>
           </div>
           <div className="mt-8 grid max-w-xl gap-3 text-sm text-zinc-400 sm:grid-cols-2">
-            <div className="flex items-center gap-2"><Dot className="h-5 w-5 text-red-500" /> 35 generations/month trial</div>
+            <div className="flex items-center gap-2"><Dot className="h-5 w-5 text-red-500" /> 10 free listing generations</div>
             <div className="flex items-center gap-2"><Dot className="h-5 w-5 text-red-500" /> Staff review stays required</div>
           </div>
           <p className="mt-5 max-w-xl text-xs leading-5 text-zinc-500">
-            Free trial includes 35 generations per month. Final listings should be reviewed by
+            Free access includes 10 listing generations per month. Final listings should be reviewed by
             dealership staff before publishing.
           </p>
         </div>
@@ -112,9 +112,9 @@ export default function LandingPage() {
           <CardContent className="space-y-5 p-6">
             <div className="grid gap-3 sm:grid-cols-3">
               {[
-                ["Generated", "18 / 35"],
-                ["Saved", "12"],
-                ["Team", "4 active"],
+                ["Usage", "Plan tracked"],
+                ["Library", "Shared drafts"],
+                ["Team", "Role based"],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-md border border-white/10 bg-white/[.04] p-4">
                   <div className="text-xs text-muted-foreground">{label}</div>
@@ -132,7 +132,7 @@ export default function LandingPage() {
               </p>
             </div>
             <div className="space-y-3">
-              {["Facebook Marketplace", "Dealer website", "Craigslist", "SEO highlights"].map((item) => (
+              {["Facebook Marketplace", "CarGurus", "Dealer website", "SEO highlights"].map((item) => (
                 <div key={item} className="flex items-center justify-between rounded-md border border-white/10 bg-white/[.04] px-4 py-3 text-sm">
                   <span>{item}</span>
                   <ClipboardCheck className="h-4 w-4 text-emerald-300" />
@@ -208,7 +208,7 @@ export default function LandingPage() {
           <h2 className="font-display text-4xl font-black">Request early access.</h2>
           <p className="mt-4 text-sm leading-6 text-muted-foreground">
             ListingFlow AI is currently in active development. Early dealerships can test the
-            workflow, style learning, and generation limits before real billing is added.
+            workflow, style learning, generation limits, and subscription flow before production launch.
           </p>
         </div>
         <Card className="app-card rounded-[2rem] border-white/12 bg-[#11141A]/95">
