@@ -65,6 +65,11 @@ export function getStripePriceId(plan: BillingPlanKey, interval: BillingInterval
   const envName = interval === "monthly" ? config.monthlyEnv : config.yearlyEnv;
   const priceId = process.env[envName];
   if (!priceId) throw new Error(`${envName} is not configured.`);
+  if (!priceId.startsWith("price_")) {
+    throw new Error(
+      `${envName} must contain a Stripe Price ID beginning with price_, not a dollar amount or product ID.`,
+    );
+  }
   return priceId;
 }
 
@@ -72,8 +77,8 @@ export function stripeBillingConfigured() {
   return Boolean(
     process.env.STRIPE_SECRET_KEY &&
     process.env.STRIPE_WEBHOOK_SECRET &&
-    Object.values(BILLING_PLANS).every(
-      (plan) => process.env[plan.monthlyEnv] && process.env[plan.yearlyEnv],
+    Object.values(BILLING_PLANS).every((plan) =>
+      [process.env[plan.monthlyEnv], process.env[plan.yearlyEnv]].every((value) => value?.startsWith("price_")),
     ),
   );
 }

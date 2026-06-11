@@ -10,7 +10,7 @@ const routeFeatureMap: Array<[string, string]> = [
   ["/dashboard/style-library", "style_library"],
   ["/dashboard/team", "team_management"],
   ["/dashboard/settings", "settings"],
-  ["/dashboard/billing", "billing_demo"],
+  ["/dashboard/billing", "billing_subscriptions"],
   ["/dashboard/analytics", "analytics"],
   ["/dashboard/admin", "founder_admin"],
 ];

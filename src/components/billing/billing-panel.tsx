@@ -6,15 +6,9 @@ import { CreditCard, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Dealership, SubscriptionStatus } from "@/types/dealership";
+import type { Dealership } from "@/types/dealership";
 import { BILLING_PLANS, type BillingInterval, type BillingPlanKey } from "@/lib/stripe/config";
-
-const plans: Array<{ status: SubscriptionStatus; name: string; limit: string; action: string }> = [
-  { status: "starter_demo", name: "Starter Demo", limit: "150 generations/month", action: "Activate Starter Demo" },
-  { status: "pro_demo", name: "Pro Demo", limit: "500 generations/month", action: "Activate Pro Demo" },
-  { status: "unlimited_demo", name: "Unlimited Demo", limit: "Unlimited test generations", action: "Activate Unlimited Demo" },
-  { status: "trial", name: "Free Trial", limit: "10 generations/month", action: "Return to Free Trial" },
-];
+import { getPlanLimit } from "@/lib/generation/plans";
 
 export function BillingPanel({
   dealership,
@@ -28,26 +22,11 @@ export function BillingPanel({
   const router = useRouter();
   const [current, setCurrent] = useState(dealership);
   const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState<SubscriptionStatus | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
-
-  async function setPlan(status: SubscriptionStatus) {
-    setLoading(status);
-    const response = await fetch("/api/billing/demo-plan", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ dealershipId: current.id, status }),
-    });
-    const payload = await response.json();
-    setLoading(null);
-    if (!response.ok) {
-      setMessage(payload.message || "Could not update demo billing.");
-      return;
-    }
-    setCurrent(payload.dealership);
-    setMessage("Demo billing mode updated. No real payment was processed.");
-  }
+  const activeLimit = current.subscription_status === "trial"
+    ? current.trial_generation_limit
+    : getPlanLimit(current.subscription_status);
 
   async function startCheckout(plan: BillingPlanKey, interval: BillingInterval) {
     setCheckoutLoading(`${plan}-${interval}`);
@@ -87,7 +66,7 @@ export function BillingPanel({
     <div className="space-y-6">
       <Card className="app-card">
         <CardHeader>
-          <CardTitle>Billing / Trial Settings</CardTitle>
+          <CardTitle>Billing</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
           <div className="rounded-md border border-white/10 bg-white/5 p-4">
@@ -95,13 +74,15 @@ export function BillingPanel({
             <div className="mt-2 text-xl font-semibold">{current.subscription_status.replaceAll("_", " ")}</div>
           </div>
           <div className="rounded-md border border-white/10 bg-white/5 p-4">
-            <div className="text-xs text-muted-foreground">Trial limit</div>
-            <div className="mt-2 text-xl font-semibold">{current.trial_generation_limit}/month</div>
+            <div className="text-xs text-muted-foreground">Monthly generation limit</div>
+            <div className="mt-2 text-xl font-semibold">{activeLimit === "unlimited" ? "Unlimited" : `${activeLimit}/month`}</div>
           </div>
           <div className="rounded-md border border-red-500/20 bg-red-500/10 p-4">
-            <div className="text-xs text-red-200">{current.fake_paid_mode ? "Demo billing mode" : "Stripe billing"}</div>
+            <div className="text-xs text-red-200">Stripe billing</div>
             <div className="mt-2 text-sm text-red-100">
-              {current.fake_paid_mode ? "No real payment is processed." : "Real subscriptions are handled by Stripe Checkout."}
+              {current.stripe_subscription_id
+                ? "A live Stripe subscription is attached to this dealership."
+                : "Start a Stripe Checkout subscription to attach live billing."}
             </div>
           </div>
         </CardContent>
@@ -128,7 +109,7 @@ export function BillingPanel({
                 <CardHeader>
                   <div className="flex items-center justify-between gap-3">
                     <CardTitle className="text-lg">{plan.name}</CardTitle>
-                    {current.subscription_status === plan.status && !current.fake_paid_mode && <Badge className="bg-primary">Active</Badge>}
+                    {current.subscription_status === plan.status && <Badge className="bg-primary">Active</Badge>}
                   </div>
                   <p className="text-sm text-muted-foreground">{plan.limit}</p>
                 </CardHeader>
@@ -170,36 +151,7 @@ export function BillingPanel({
           </Button>
         </CardContent>
       </Card>
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {plans.map((plan) => (
-          <Card key={plan.status} className="app-card">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{plan.name}</CardTitle>
-                {current.subscription_status === plan.status && <Badge className="bg-primary">Active</Badge>}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <p className="text-sm text-muted-foreground">{plan.limit}</p>
-              <Button
-                disabled={!canToggle || Boolean(current.stripe_subscription_id) || loading === plan.status}
-                onClick={() => setPlan(plan.status)}
-                className="w-full bg-primary hover:bg-red-700"
-              >
-                {loading === plan.status ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-                {plan.action}
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      {!canToggle && <p className="text-sm text-muted-foreground">Only dealership owners can toggle demo billing mode.</p>}
-      {current.stripe_subscription_id && (
-        <p className="text-sm text-muted-foreground">
-          Demo plan controls are locked while a real Stripe subscription is attached to this dealership.
-        </p>
-      )}
+      {!canToggle && <p className="text-sm text-muted-foreground">Only dealership owners can manage billing.</p>}
     </div>
   );
 }

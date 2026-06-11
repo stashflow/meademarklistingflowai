@@ -83,12 +83,12 @@ const helpByPath = [
   {
     match: "/dashboard/billing",
     title: "How to use billing",
-    intro: "Billing includes Stripe subscriptions plus clearly separated demo controls for internal plan testing.",
+    intro: "Billing includes Stripe subscriptions and the billing portal for live plan management.",
     steps: [
       "Review current trial usage and monthly generation limits.",
       "Owners can start a real monthly or yearly Stripe subscription when Stripe is configured.",
-      "Demo plan buttons never process payment and are only for testing limits.",
-      "Return to Free Trial when you want to test the normal 10-generation limit.",
+      "Use the billing portal to update payment methods, invoices, and cancellation.",
+      "Confirm the dealership is on the correct plan before sending the billing link to a customer.",
     ],
   },
   {
@@ -110,7 +110,7 @@ const helpByPath = [
       "Confirm your admin email is configured server-side.",
       "Review dealership activity without changing customer data unnecessarily.",
       "Use analytics and audit history to debug support questions.",
-      "Keep real billing and sensitive customer operations outside demo controls until those systems are connected.",
+      "Keep real billing and sensitive customer operations scoped to the Stripe billing flow and portal.",
     ],
   },
 ];

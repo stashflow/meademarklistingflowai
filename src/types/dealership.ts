@@ -2,9 +2,6 @@ export type DealershipRole = "owner" | "admin" | "manager" | "staff";
 
 export type SubscriptionStatus =
   | "trial"
-  | "starter_demo"
-  | "pro_demo"
-  | "unlimited_demo"
   | "starter"
   | "pro"
   | "dealer_group"
@@ -102,9 +99,6 @@ export type PlanLimit = number | "unlimited";
 
 export const PLAN_LIMITS: Record<SubscriptionStatus, PlanLimit> = {
   trial: 10,
-  starter_demo: 150,
-  pro_demo: 500,
-  unlimited_demo: "unlimited",
   starter: 150,
   pro: 500,
   dealer_group: "unlimited",

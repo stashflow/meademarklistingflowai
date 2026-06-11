@@ -2,7 +2,7 @@
 
 ListingFlow AI by MeadeMark Labs is a B2B SaaS MVP for dealerships that need clean, accurate, dealer-ready vehicle listings. It helps staff turn VINs, decoded vehicle details, condition notes, selling points, and dealership style preferences into platform-ready copy while keeping humans in control.
 
-The MVP includes account auth, dealership workspaces, onboarding, style learning, listing generation, saved listings, team invites, join requests, trial generation limits, rate limiting, and demo billing controls.
+The MVP includes account auth, dealership workspaces, onboarding, style learning, listing generation, saved listings, team invites, join requests, trial generation limits, rate limiting, and Stripe billing.
 
 Recent operations features include bulk inventory intake, approval statuses, claim risk auditing, feature event tracking, audit history, dealership analytics, founder admin visibility, VIN/feature search, and vehicle image URL tracking.
 
@@ -55,7 +55,7 @@ OPENAI_RESEARCH_MODEL=gpt-4o-mini
 2. Copy the URL and anon key into `.env.local`.
 3. Copy the service role key into `.env.local`.
 4. Run the SQL migrations in order from `supabase/migrations/`.
-   - Fresh setup: run `0001` through `0007` in numeric order.
+   - Fresh setup: run `0001` through `0009` in numeric order.
    - Existing setup that already ran the first migration: run the newer migration files you have not applied yet.
 5. Enable email/password authentication in Supabase Auth.
 6. Configure the site URL and redirect URL, for example:
@@ -155,9 +155,9 @@ Free workspace trial = 10 generations per month per dealership.
 Plan limits:
 
 - `trial`: 10/month
-- `starter_demo`: 150/month
-- `pro_demo`: 500/month
-- `unlimited_demo`: unlimited test generations
+- `starter`: 150/month
+- `pro`: 500/month
+- `dealer_group`: unlimited
 
 Route limits:
 
@@ -178,6 +178,8 @@ Create recurring Stripe prices for:
 
 Then add the Stripe price IDs to `.env.local` and Vercel. Configure the webhook endpoint:
 
+Each `STRIPE_PRICE_*` value must be the recurring Stripe Price ID that begins with `price_`. Do not paste a dollar amount or a `prod_` product ID.
+
 ```bash
 https://your-domain.com/api/stripe/webhook
 ```
@@ -196,19 +198,6 @@ Recommended launch pricing:
 - Starter: $79/month or $790/year
 - Pro: $149/month or $1,490/year
 - Dealer Group: $299/month or $2,990/year
-
-## Demo Billing
-
-Demo billing remains available for founder testing only. No real payments are processed by the demo controls. Use Stripe Checkout for real customer billing.
-
-The Billing page can toggle:
-
-- Starter Demo
-- Pro Demo
-- Unlimited Demo
-- Free Trial
-
-Do not use demo billing for real customer billing.
 
 ## VIN Decoding
 

@@ -76,14 +76,16 @@ export default async function DashboardPage() {
 
   const savedListingRows = (listings || []) as Array<{ risk_level?: string | null; status?: string | null; approval_status?: string | null }>;
   const generated = usage?.generation_count || 0;
-  const limit = getPlanLimit(dealership.subscription_status, dealership.fake_paid_mode);
+  const limit = dealership.subscription_status === "trial"
+    ? dealership.trial_generation_limit
+    : getPlanLimit(dealership.subscription_status);
   const progressValue = limit === "unlimited" ? 100 : Math.min((generated / limit) * 100, 100);
   const teamMembers = (members || []) as unknown as DealershipMember[];
   const pendingReview = savedListingRows.filter((listing) => listing.status === "pending_review" || listing.approval_status === "pending_review").length;
   const highRisk = savedListingRows.filter((listing) => listing.risk_level === "high").length;
   const metricCards: Array<[string, string | number, LucideIcon]> = [
     ["Listings generated this month", generated, Car],
-    ["Trial limit", limit === "unlimited" ? "Unlimited" : `${limit}/month`, Plus],
+    ["Plan limit", limit === "unlimited" ? "Unlimited" : `${limit}/month`, Plus],
     ["Saved listings", listings?.length || 0, Library],
     ["Pending review", pendingReview, CheckCircle2],
     ["High-risk claim checks", highRisk, ShieldAlert],
@@ -136,16 +138,16 @@ export default async function DashboardPage() {
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <Card className="app-card rounded-2xl border-white/10">
           <CardHeader>
-            <CardTitle className="font-display text-2xl">Trial usage</CardTitle>
+            <CardTitle className="font-display text-2xl">Plan usage</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between text-sm">
               <span>{generated} generations used</span>
-              <span>{limit === "unlimited" ? "Unlimited demo" : `${limit} monthly limit`}</span>
+              <span>{limit === "unlimited" ? "Unlimited" : `${limit} monthly limit`}</span>
             </div>
             <Progress value={progressValue} />
             <p className="text-sm text-muted-foreground">
-              Trial usage is enforced server-side per dealership workspace.
+              Usage is enforced server-side per dealership workspace and follows the active plan.
             </p>
           </CardContent>
         </Card>

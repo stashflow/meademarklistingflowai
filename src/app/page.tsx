@@ -1,8 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import {
+  ArrowDown,
   ArrowRight,
   BadgeCheck,
+  CheckCircle2,
   ClipboardCheck,
   Dot,
   Gauge,
@@ -27,7 +29,16 @@ const steps = [
 const trustFeatures: Array<[LucideIcon, string, string]> = [
   [ClipboardCheck, "VIN-first intake", "Decode a VIN into editable baseline details, then add mileage, condition notes, selling points, and staff-confirmed claims."],
   [ShieldCheck, "Honest generation", "The AI is instructed not to invent title, accident, warranty, ownership, financing, or service claims."],
-  [Gauge, "Trial controls", "The 10-generation free limit is enforced server-side. Demo billing exists only for testing plan behavior."],
+  [Gauge, "Trial controls", "The 10-generation free limit is enforced server-side while Stripe handles live paid subscriptions."],
+];
+
+const previewOutputs = [
+  "Facebook Marketplace listing",
+  "CarGurus description",
+  "Dealer website copy",
+  "SEO title and meta description",
+  "Feature highlights",
+  "Claim-risk review notes",
 ];
 
 export default function LandingPage() {
@@ -40,7 +51,7 @@ export default function LandingPage() {
             <a href="#how-it-works" className="transition hover:text-white">Workflow</a>
             <a href="#style-learning" className="transition hover:text-white">Controls</a>
             <Link href="/pricing" className="transition hover:text-white">Pricing</Link>
-            <a href="#early-access" className="transition hover:text-white">Access</a>
+            <a href="#contact" className="transition hover:text-white">Contact</a>
           </nav>
           <div className="flex items-center gap-2">
             <Button variant="ghost" asChild>
@@ -61,14 +72,14 @@ export default function LandingPage() {
         <div className="flex flex-col justify-center">
           <Badge className="mb-7 w-fit border-red-500/35 bg-red-500/10 text-red-100">
             <span className="h-2 w-2 rounded-full bg-red-500" />
-            Private build underway
+            Ready for dealership onboarding
           </Badge>
           <h1 className="font-display max-w-3xl text-5xl font-black leading-[.95] text-white md:text-6xl lg:text-7xl">
             Dealer-ready vehicle listings in seconds.
           </h1>
           <p className="mt-7 max-w-2xl text-base leading-8 text-zinc-300 md:text-lg">
-            ListingFlow AI by MeadeMark Labs is being built to help dealerships generate cleaner
-            listing copy from VINs, confirmed vehicle details, and staff notes, while keeping staff in control.
+            ListingFlow AI by MeadeMark Labs helps dealerships generate cleaner listing copy from
+            VINs, confirmed vehicle details, and staff notes, while keeping staff in control.
           </p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             <Button size="lg" asChild className="bg-primary text-primary-foreground shadow-[0_0_0_1px_rgba(220,38,38,.35),0_18px_42px_rgba(220,38,38,.22)] hover:bg-red-500">
@@ -145,6 +156,104 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <section className="relative border-b border-white/8 bg-[#0D1015]">
+        <div className="mx-auto grid max-w-7xl gap-10 px-6 py-16 lg:grid-cols-[0.78fr_1fr] lg:px-8">
+          <MotionReveal>
+            <div className="flex flex-col justify-center">
+              <Badge className="mb-5 w-fit border-red-500/35 bg-red-500/10 text-red-100">
+                The homepage preview
+              </Badge>
+              <h2 className="font-display text-4xl font-black leading-tight text-white md:text-5xl">
+                See the listing transformation before you sign up.
+              </h2>
+              <p className="mt-5 max-w-xl text-base leading-8 text-zinc-300">
+                Dealers should not need a sales call to understand the value. ListingFlow turns the kind
+                of rough notes staff already have into cleaner copy for the places shoppers actually read.
+              </p>
+              <div className="mt-7 grid gap-3 text-sm text-zinc-300">
+                {[
+                  "Start with a VIN, partial vehicle name, or pasted inventory notes.",
+                  "Confirm trim, condition, title, accident history, and selling points.",
+                  "Copy platform-specific listing copy in one click.",
+                ].map((item) => (
+                  <div key={item} className="flex items-start gap-3">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+              <Button size="lg" asChild className="mt-8 w-fit bg-primary text-primary-foreground hover:bg-red-500">
+                <Link href="/signup">
+                  Try it with 10 free generations <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          </MotionReveal>
+
+          <MotionReveal delay={0.08}>
+            <div className="rounded-[2rem] border border-white/10 bg-[#090C10] p-4 shadow-[0_28px_90px_rgba(0,0,0,.42)]">
+              <div className="grid gap-4 xl:grid-cols-[1fr_auto_1.08fr] xl:items-stretch">
+                <div className="rounded-2xl border border-white/10 bg-white/[.035] p-5">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Input</div>
+                      <h3 className="mt-1 font-display text-2xl text-white">Raw dealer notes</h3>
+                    </div>
+                    <Badge variant="outline" className="border-white/10 text-zinc-300">30 seconds</Badge>
+                  </div>
+                  <pre className="overflow-hidden whitespace-pre-wrap rounded-xl border border-white/10 bg-[#0B0D10] p-5 font-mono text-sm leading-7 text-zinc-300">
+{`VIN: 1HGCM82633A123456
+
+Notes:
+- clean interior
+- new tires
+- backup camera
+- Bluetooth
+- 72,410 miles
+- ask about trim`}
+                  </pre>
+                </div>
+
+                <div className="hidden items-center justify-center xl:flex">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-red-500/30 bg-red-500/10 shadow-[0_0_35px_rgba(220,38,38,.22)]">
+                    <ArrowRight className="h-6 w-6 text-red-100" />
+                  </div>
+                </div>
+                <div className="flex justify-center xl:hidden">
+                  <ArrowDown className="h-6 w-6 text-red-200" />
+                </div>
+
+                <div className="rounded-2xl border border-red-500/20 bg-[radial-gradient(circle_at_top_right,rgba(220,38,38,.14),transparent_36%),rgba(255,255,255,.035)] p-5">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-red-200">Output</div>
+                      <h3 className="mt-1 font-display text-2xl text-white">Dealer-ready copy set</h3>
+                    </div>
+                    <Badge className="bg-primary text-white">Ready to review</Badge>
+                  </div>
+                  <div className="space-y-3">
+                    {previewOutputs.map((item) => (
+                      <div key={item} className="flex items-center justify-between rounded-xl border border-white/10 bg-[#0B0D10]/80 px-4 py-3 text-sm">
+                        <span>{item}</span>
+                        <ClipboardCheck className="h-4 w-4 text-emerald-300" />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-5 rounded-xl border border-white/10 bg-[#0B0D10]/70 p-4">
+                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">Example generated opening</div>
+                    <p className="mt-3 text-sm leading-6 text-zinc-300">
+                      2003 Honda Accord EX Coupe with 72,410 miles, clean interior, new tires,
+                      backup camera, and Bluetooth. ListingFlow would keep trim-specific claims
+                      out until staff confirms the exact trim.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </MotionReveal>
+        </div>
+      </section>
+
       <section className="border-y border-white/8 bg-[#0D1015]">
         <div className="mx-auto grid max-w-7xl gap-4 px-6 py-10 md:grid-cols-3">
           {[
@@ -193,7 +302,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="early-access" className="mx-auto grid max-w-7xl gap-10 px-6 py-20 lg:grid-cols-[0.85fr_1fr]">
+      <section id="contact" className="mx-auto grid max-w-7xl gap-10 px-6 py-20 lg:grid-cols-[0.85fr_1fr]">
         <div>
           <div className="relative mb-8 aspect-[16/5] max-w-md overflow-hidden rounded-lg border border-white/10 bg-[#171A20] shadow-[0_20px_80px_rgba(0,0,0,.26)]">
             <Image
@@ -205,10 +314,9 @@ export default function LandingPage() {
               priority
             />
           </div>
-          <h2 className="font-display text-4xl font-black">Request early access.</h2>
+          <h2 className="font-display text-4xl font-black">Contact MeadeMark Labs.</h2>
           <p className="mt-4 text-sm leading-6 text-muted-foreground">
-            ListingFlow AI is currently in active development. Early dealerships can test the
-            workflow, style learning, generation limits, and subscription flow before production launch.
+            Ask about dealership onboarding, team setup, billing, or how ListingFlow fits your current listing workflow.
           </p>
         </div>
         <Card className="app-card rounded-[2rem] border-white/12 bg-[#11141A]/95">

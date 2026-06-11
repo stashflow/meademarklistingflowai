@@ -17,7 +17,7 @@ export default async function BillingPage() {
       <div>
         <h1 className="text-3xl font-semibold">Billing</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Manage the dealership subscription or use clearly marked demo plans for internal testing.
+          Manage the dealership subscription with Stripe Checkout and the billing portal.
         </p>
       </div>
       <BillingPanel dealership={dealership} canToggle={member?.role === "owner"} stripeConfigured={stripeBillingConfigured()} />
