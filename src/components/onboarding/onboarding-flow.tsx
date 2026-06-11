@@ -144,6 +144,7 @@ export function OnboardingFlow() {
       voiceSummary: `${styleAnswers.tone} voice for dealership-ready listings: accurate, practical, and easy for shoppers to scan.`,
       formattingRules: {
         length: styleAnswers.length,
+        titleStyle: "Year Make Model Trim with one concise, factual selling point",
         bulletStyle: "Use short feature bullets for scannability when helpful.",
         emojiUsage: "Avoid emojis unless the dealership adds them manually.",
         capitalization: "Use standard capitalization. Avoid all-caps hype.",
@@ -253,7 +254,19 @@ export function OnboardingFlow() {
     const payload = await response.json();
     setLoading(false);
     if (!response.ok) {
+      if (payload.dashboardUrl) {
+        router.push(payload.dashboardUrl);
+        return;
+      }
+      if (payload.waitingUrl) {
+        router.push(payload.waitingUrl);
+        return;
+      }
       setMessage(payload.message || "Could not submit join request.");
+      return;
+    }
+    if (payload.waitingUrl) {
+      router.push(payload.waitingUrl);
       return;
     }
     setMessage("Join request submitted. An owner or admin can approve it from the Team page.");

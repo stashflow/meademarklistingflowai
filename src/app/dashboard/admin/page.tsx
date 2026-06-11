@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DealershipAdminManager } from "@/components/admin/dealership-admin-manager";
 import { isConfiguredAppAdmin } from "@/lib/admin";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -34,6 +35,18 @@ export default async function FounderAdminPage() {
     admin.from("feature_events").select("*").order("created_at", { ascending: false }).limit(25),
     admin.from("dealerships").select("*").order("created_at", { ascending: false }).limit(10),
   ]);
+  const creatorIds = Array.from(new Set((dealerships || []).map((dealership) => dealership.created_by).filter(Boolean)));
+  const { data: creatorProfiles } = creatorIds.length
+    ? await admin.from("profiles").select("user_id,email").in("user_id", creatorIds)
+    : { data: [] };
+  const creatorEmailById = new Map((creatorProfiles || []).map((profile) => [profile.user_id, profile.email]));
+  const managedDealerships = (dealerships || []).map((dealership) => ({
+    id: dealership.id,
+    name: dealership.name,
+    subscription_status: dealership.subscription_status,
+    created_at: dealership.created_at,
+    creator_email: dealership.created_by ? creatorEmailById.get(dealership.created_by) || null : null,
+  }));
 
   return (
     <main className="space-y-6 p-6">
@@ -95,6 +108,15 @@ export default async function FounderAdminPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="app-card rounded-2xl border-white/10">
+        <CardHeader>
+          <CardTitle className="font-display text-2xl">Dealership admin</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DealershipAdminManager dealerships={managedDealerships} />
+        </CardContent>
+      </Card>
     </main>
   );
 }

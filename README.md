@@ -36,11 +36,15 @@ STRIPE_PRICE_PRO_MONTHLY=
 STRIPE_PRICE_PRO_YEARLY=
 STRIPE_PRICE_DEALER_GROUP_MONTHLY=
 STRIPE_PRICE_DEALER_GROUP_YEARLY=
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=
 ```
 
 `SUPABASE_SERVICE_ROLE_KEY` is used only in secure server contexts for rate limiting and public early access inserts. Do not expose it to the browser.
 
 `LISTINGFLOW_ADMIN_EMAILS` is a server-only comma-separated list of founder/admin emails that can access `/dashboard/admin`.
+
+`RESEND_API_KEY` and `RESEND_FROM_EMAIL` are optional. If configured, ListingFlow sends join-request notification emails to the dealership creator/owners when someone requests access. If they are omitted, the join request still works and the app just skips the email.
 
 Optional:
 
