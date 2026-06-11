@@ -1,5 +1,6 @@
 export type FormattingRules = {
   length?: string;
+  titleStyle?: string;
   bulletStyle?: string;
   emojiUsage?: string;
   capitalization?: string;

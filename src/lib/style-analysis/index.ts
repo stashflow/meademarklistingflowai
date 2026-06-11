@@ -17,6 +17,7 @@ export const fallbackStyleProfile: StyleProfileOutput = {
     "Professional, clear, and dealership-ready. Emphasizes useful vehicle details without exaggerated claims.",
   formattingRules: {
     length: "Standard",
+    titleStyle: "Year Make Model Trim followed by one concise, factual selling point",
     bulletStyle: "Short scannable bullets for features and selling points",
     emojiUsage: "Avoid emojis unless explicitly requested",
     capitalization: "Title case headings, normal sentence casing",
@@ -57,6 +58,7 @@ export async function analyzeDealershipStyle(input: StyleAnalysisInput) {
   "voiceSummary": "",
   "formattingRules": {
     "length": "",
+    "titleStyle": "",
     "bulletStyle": "",
     "emojiUsage": "",
     "capitalization": "",
