@@ -20,7 +20,7 @@ export function BillingPanel({
   stripeConfigured: boolean;
 }) {
   const router = useRouter();
-  const [current, setCurrent] = useState(dealership);
+  const current = dealership;
   const [message, setMessage] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);

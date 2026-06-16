@@ -23,6 +23,20 @@ export type ClaimRiskAudit = {
   recommendations: string[];
 };
 
+export type ListingPerformanceIssue = {
+  id: string;
+  label: string;
+  detail: string;
+  priority: "high" | "medium" | "low";
+};
+
+export type PhotoChecklistItem = {
+  id: string;
+  label: string;
+  complete: boolean;
+  detail: string;
+};
+
 export type FeatureConfidence = "confirmed" | "likely" | "unsure" | "ask_user";
 
 export type FeatureHighlight = {
@@ -237,6 +251,20 @@ export type SavedListing = {
   quality_score?: number | null;
   risk_level?: RiskLevel | null;
   risk_summary?: ClaimRiskAudit | Record<string, unknown> | null;
+  listing_score?: number | null;
+  completeness_score?: number | null;
+  seo_score?: number | null;
+  conversion_score?: number | null;
+  platform_score?: number | null;
+  compliance_score?: number | null;
+  lead_potential_score?: number | null;
+  search_visibility_score?: number | null;
+  missing_fields?: ListingPerformanceIssue[] | null;
+  risk_flags?: ListingPerformanceIssue[] | null;
+  suggested_fixes?: ListingPerformanceIssue[] | null;
+  photo_checklist?: PhotoChecklistItem[] | null;
+  days_listed?: number | null;
+  last_optimized_at?: string | null;
   tags: string[] | null;
   internal_notes: string | null;
   created_at: string;

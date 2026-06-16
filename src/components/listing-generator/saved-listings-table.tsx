@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Copy, Search, Trash2 } from "lucide-react";
+import { AlertTriangle, Copy, Search, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getListingDaysListed, scoreSavedListing } from "@/lib/listing-performance";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { SavedListing } from "@/types/listing";
 
@@ -22,10 +23,13 @@ export function SavedListingsTable({
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("search") || "");
   const [status, setStatus] = useState("all");
+  const [auditFilter, setAuditFilter] = useState("all");
   const [rows, setRows] = useState(listings);
 
   const filtered = useMemo(() => {
     return rows.filter((listing) => {
+      const performance = scoreSavedListing(listing);
+      const daysListed = getListingDaysListed(listing);
       const haystack = [
         listing.vin,
         listing.year,
@@ -37,9 +41,19 @@ export function SavedListingsTable({
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
-      return haystack.includes(query.toLowerCase()) && (status === "all" || listing.status === status);
-    });
-  }, [query, rows, status]);
+      const matchesAuditFilter =
+        auditFilter === "all" ||
+        (auditFilter === "score_below_70" && performance.listingScore < 70) ||
+        (auditFilter === "high_risk" && performance.riskFlags.some((flag) => flag.priority === "high")) ||
+        (auditFilter === "missing_photos" && performance.photoChecklist.some((item) => !item.complete)) ||
+        (auditFilter === "weak_seo" && performance.seoScore < 70) ||
+        (auditFilter === "no_cta" && performance.suggestedFixes.some((fix) => fix.id === "cta")) ||
+        (auditFilter === "missing_trim" && performance.missingFields.some((field) => field.id === "trim")) ||
+        (auditFilter === "stale" && daysListed >= 30) ||
+        (auditFilter === "needs_rewrite" && performance.conversionScore < 70);
+      return haystack.includes(query.toLowerCase()) && (status === "all" || listing.status === status) && matchesAuditFilter;
+    }).sort((a, b) => scoreSavedListing(a).listingScore - scoreSavedListing(b).listingScore);
+  }, [auditFilter, query, rows, status]);
 
   async function deleteListing(id: string) {
     const supabase = createSupabaseBrowserClient();
@@ -86,7 +100,7 @@ export function SavedListingsTable({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 md:grid-cols-[1fr_220px]">
+      <div className="grid gap-3 md:grid-cols-[1fr_220px_240px]">
         <div className="flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3">
           <Search className="h-4 w-4 text-muted-foreground" />
           <Input
@@ -108,6 +122,20 @@ export function SavedListingsTable({
             <SelectItem value="published">Published</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={auditFilter} onValueChange={(value) => value && setAuditFilter(value)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All audit filters</SelectItem>
+            <SelectItem value="score_below_70">Score below 70</SelectItem>
+            <SelectItem value="high_risk">High-risk claims</SelectItem>
+            <SelectItem value="missing_photos">Missing photos</SelectItem>
+            <SelectItem value="weak_seo">Weak SEO</SelectItem>
+            <SelectItem value="no_cta">No CTA</SelectItem>
+            <SelectItem value="missing_trim">Missing trim</SelectItem>
+            <SelectItem value="stale">Stale listing</SelectItem>
+            <SelectItem value="needs_rewrite">Needs rewrite</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="overflow-hidden rounded-md border border-white/10">
@@ -115,40 +143,69 @@ export function SavedListingsTable({
           <TableHeader>
             <TableRow>
               <TableHead>Vehicle</TableHead>
-              <TableHead>VIN / Stock</TableHead>
+              <TableHead>Price</TableHead>
+              <TableHead>Days</TableHead>
+              <TableHead>Score</TableHead>
+              <TableHead>Compliance</TableHead>
+              <TableHead>Lead</TableHead>
+              <TableHead>Search</TableHead>
+              <TableHead>Issues</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Created</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((listing) => (
-              <TableRow key={listing.id}>
-                <TableCell>
-                  <Link href={`/dashboard/saved-listings/${listing.id}`} className="font-medium hover:underline">
-                    {[listing.year, listing.make, listing.model, listing.trim].filter(Boolean).join(" ") || "Untitled vehicle"}
-                  </Link>
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {listing.vin || listing.input_data?.stockNumber || "Not provided"}
-                </TableCell>
-                <TableCell><Badge variant="outline" className="border-white/10">{listing.status}</Badge></TableCell>
-                <TableCell className="text-muted-foreground">{new Date(listing.created_at).toLocaleDateString()}</TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" onClick={() => duplicateListing(listing)}>
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                  {canDelete && (
-                    <Button variant="ghost" size="icon" onClick={() => deleteListing(listing.id)}>
-                      <Trash2 className="h-4 w-4 text-red-300" />
+            {filtered.map((listing) => {
+              const performance = scoreSavedListing(listing);
+              const daysListed = getListingDaysListed(listing);
+              const issueCount = performance.missingFields.length + performance.riskFlags.length + performance.suggestedFixes.length;
+              return (
+                <TableRow key={listing.id}>
+                  <TableCell className="min-w-56">
+                    <Link href={`/dashboard/saved-listings/${listing.id}`} className="font-medium hover:underline">
+                      {[listing.year, listing.make, listing.model, listing.trim].filter(Boolean).join(" ") || "Untitled vehicle"}
+                    </Link>
+                    <div className="mt-1 text-xs text-muted-foreground">{listing.vin || listing.input_data?.stockNumber || "No VIN/stock"}</div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{listing.price ? `$${listing.price.toLocaleString()}` : "Missing"}</TableCell>
+                  <TableCell className="text-muted-foreground">{daysListed}</TableCell>
+                  <TableCell><ScoreBadge value={performance.listingScore} /></TableCell>
+                  <TableCell><ScoreBadge value={performance.complianceScore} /></TableCell>
+                  <TableCell><ScoreBadge value={performance.leadPotentialScore} /></TableCell>
+                  <TableCell><ScoreBadge value={performance.searchVisibilityScore} /></TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      {issueCount > 0 && <AlertTriangle className="h-4 w-4 text-amber-200" />}
+                      <span>{issueCount ? `${issueCount} fixes` : "Clean"}</span>
+                    </div>
+                    <div className="mt-1 max-w-48 truncate text-xs text-muted-foreground">{performance.recommendedAction}</div>
+                  </TableCell>
+                  <TableCell><Badge variant="outline" className="border-white/10">{listing.status}</Badge></TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" onClick={() => duplicateListing(listing)}>
+                      <Copy className="h-4 w-4" />
                     </Button>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
+                    {canDelete && (
+                      <Button variant="ghost" size="icon" onClick={() => deleteListing(listing.id)}>
+                        <Trash2 className="h-4 w-4 text-red-300" />
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
     </div>
   );
+}
+
+function ScoreBadge({ value }: { value: number }) {
+  const className = value >= 80
+    ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-100"
+    : value >= 65
+      ? "border-amber-400/25 bg-amber-400/10 text-amber-100"
+      : "border-red-400/25 bg-red-400/10 text-red-100";
+  return <Badge variant="outline" className={className}>{value}</Badge>;
 }

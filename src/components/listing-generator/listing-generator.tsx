@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { scoreListingPerformance } from "@/lib/listing-performance";
 import { normalizeNumber } from "@/lib/validators/listing";
 import type { DraftSourceConflict, ListingOutput, ListingPlatform, ListingStatus, TrimResearchResult, VehicleDraft, VehicleInput } from "@/types/listing";
 import type { FillInQuestion } from "@/lib/generation/fill-in";
@@ -826,6 +827,11 @@ export function ListingGenerator({
       const supabase = createSupabaseBrowserClient();
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) throw new Error("Please log in before saving.");
+      const imageRows = (vehicle.imageUrls || "")
+        .split("\n")
+        .map((url, index) => ({ url: url.trim(), index }))
+        .filter((item) => item.url);
+      const performance = scoreListingPerformance(vehicle, generatedOutput, imageRows.length);
       const listingPayload = {
         dealership_id: dealershipId,
         created_by: auth.user.id,
@@ -841,9 +847,21 @@ export function ListingGenerator({
         generated_output: generatedOutput,
         status,
         approval_status: status,
-        quality_score: generatedOutput.claimRiskAudit?.score ?? null,
+        quality_score: performance.listingScore,
         risk_level: generatedOutput.claimRiskAudit?.riskLevel ?? "unknown",
         risk_summary: generatedOutput.claimRiskAudit || {},
+        listing_score: performance.listingScore,
+        completeness_score: performance.completenessScore,
+        seo_score: performance.seoScore,
+        conversion_score: performance.conversionScore,
+        platform_score: performance.platformScore,
+        compliance_score: performance.complianceScore,
+        lead_potential_score: performance.leadPotentialScore,
+        search_visibility_score: performance.searchVisibilityScore,
+        missing_fields: performance.missingFields,
+        risk_flags: performance.riskFlags,
+        suggested_fixes: performance.suggestedFixes,
+        photo_checklist: performance.photoChecklist,
         tags: tags.split(",").map((tag) => tag.trim()).filter(Boolean),
         internal_notes: internalNotes || null,
         updated_at: new Date().toISOString(),
@@ -861,32 +879,26 @@ export function ListingGenerator({
           .update({ status: "generated", listing_id: savedId, updated_at: new Date().toISOString() })
           .eq("id", batchItemId);
       }
-      if (vehicle.imageUrls && !linkedListingId) {
-        const rows = vehicle.imageUrls
-          .split("\n")
-          .map((url, index) => ({ url: url.trim(), index }))
-          .filter((item) => item.url);
-        if (rows.length) {
-          await supabase.from("listing_images").insert(rows.map((item) => ({
-            listing_id: savedId || null,
-            dealership_id: dealershipId,
-            created_by: auth.user.id,
-            image_url: item.url,
-            alt_text: [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(" ") || "Vehicle image",
-            sort_order: item.index,
-            metadata: { source: "manual_url", photoNotes: vehicle.photoNotes || null },
-          })));
-        }
+      if (imageRows.length && !linkedListingId) {
+        await supabase.from("listing_images").insert(imageRows.map((item) => ({
+          listing_id: savedId || null,
+          dealership_id: dealershipId,
+          created_by: auth.user.id,
+          image_url: item.url,
+          alt_text: [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(" ") || "Vehicle image",
+          sort_order: item.index,
+          metadata: { source: "manual_url", photoNotes: vehicle.photoNotes || null },
+        })));
       }
       await supabase.from("listing_quality_reports").insert({
         listing_id: savedId || null,
         dealership_id: dealershipId,
         created_by: auth.user.id,
-        score: generatedOutput.claimRiskAudit?.score ?? qualityScore,
+        score: performance.listingScore,
         risk_level: generatedOutput.claimRiskAudit?.riskLevel ?? "unknown",
-        missing_details: generatedOutput.claimRiskAudit?.missingDetails || [],
+        missing_details: performance.missingFields,
         risk_claims: generatedOutput.claimRiskAudit?.riskClaims || [],
-        recommendations: generatedOutput.claimRiskAudit?.recommendations || [],
+        recommendations: performance.suggestedFixes.map((fix) => fix.detail),
       });
       await supabase.from("feature_events").insert({
         dealership_id: dealershipId,
@@ -902,7 +914,7 @@ export function ListingGenerator({
         entity_type: "listing",
         entity_id: savedId || null,
         action: "saved",
-        after_data: { vehicle, status, riskLevel: generatedOutput.claimRiskAudit?.riskLevel || "unknown" },
+        after_data: { vehicle, status, riskLevel: generatedOutput.claimRiskAudit?.riskLevel || "unknown", listingScore: performance.listingScore },
       });
       if (!silent) setMessage("Saved to the shared dealership library.");
       return savedId || null;

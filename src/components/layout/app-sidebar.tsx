@@ -11,6 +11,7 @@ import {
   Palette,
   Settings,
   ShieldCheck,
+  TrendingUp,
   Users,
 } from "lucide-react";
 import { BrandMark } from "@/components/common/brand-mark";
@@ -21,7 +22,8 @@ const nav = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge, roles: ["owner","admin","manager","staff"] },
   { href: "/dashboard/new-listing", label: "New Listing", icon: Car, roles: ["owner","admin","manager","staff"] },
   { href: "/dashboard/bulk-intake", label: "Bulk Intake", icon: FileSpreadsheet, roles: ["owner","admin","manager","staff"] },
-  { href: "/dashboard/saved-listings", label: "Saved Listings", icon: Library, roles: ["owner","admin","manager","staff"] },
+  { href: "/dashboard/saved-listings", label: "Inventory Audit", icon: Library, roles: ["owner","admin","manager","staff"] },
+  { href: "/dashboard/scoring", label: "Scoring", icon: TrendingUp, roles: ["owner","admin","manager","staff"] },
   { href: "/dashboard/style-library", label: "Style Library", icon: Palette, roles: ["owner","admin","manager","staff"] },
   { href: "/dashboard/team", label: "Team", icon: Users, roles: ["owner","admin","manager"] },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, roles: ["owner","admin","manager","staff"] },

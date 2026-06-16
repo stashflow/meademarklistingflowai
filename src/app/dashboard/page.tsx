@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, Car, CheckCircle2, FileSpreadsheet, Library, Palette, Plus, ShieldAlert, Sparkles, Users, type LucideIcon } from "lucide-react";
+import { AlertTriangle, Car, CheckCircle2, FileSpreadsheet, Gauge, Library, Palette, Plus, Search, ShieldAlert, TrendingUp, Users, type LucideIcon } from "lucide-react";
 import { EmptyState } from "@/components/common/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,8 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { getDealershipContext } from "@/lib/permissions";
 import { currentMonthKey, getPlanLimit } from "@/lib/generation/plans";
+import { getListingDaysListed, scoreSavedListing } from "@/lib/listing-performance";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { DealershipMember } from "@/types/dealership";
+import type { SavedListing } from "@/types/listing";
 
 export default async function DashboardPage() {
   const supabase = await createSupabaseServerClient();
@@ -57,10 +59,10 @@ export default async function DashboardPage() {
         .maybeSingle(),
       supabase
         .from("listings")
-        .select("id,title:year,year,make,model,status,approval_status,risk_level,created_at")
+        .select("*")
         .eq("dealership_id", dealership.id)
         .order("created_at", { ascending: false })
-        .limit(5),
+        .limit(100),
       supabase
         .from("dealership_members")
         .select("id,role,status,profiles(full_name,email)")
@@ -74,7 +76,13 @@ export default async function DashboardPage() {
         .maybeSingle(),
     ]);
 
-  const savedListingRows = (listings || []) as Array<{ risk_level?: string | null; status?: string | null; approval_status?: string | null }>;
+  const savedListingRows = (listings || []) as SavedListing[];
+  const scoredListings = savedListingRows.map((listing) => ({
+    listing,
+    performance: scoreSavedListing(listing),
+    daysListed: getListingDaysListed(listing),
+  }));
+  const average = (values: number[]) => values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0;
   const generated = usage?.generation_count || 0;
   const limit = dealership.subscription_status === "trial"
     ? dealership.trial_generation_limit
@@ -82,14 +90,23 @@ export default async function DashboardPage() {
   const progressValue = limit === "unlimited" ? 100 : Math.min((generated / limit) * 100, 100);
   const teamMembers = (members || []) as unknown as DealershipMember[];
   const pendingReview = savedListingRows.filter((listing) => listing.status === "pending_review" || listing.approval_status === "pending_review").length;
-  const highRisk = savedListingRows.filter((listing) => listing.risk_level === "high").length;
+  const highRisk = scoredListings.filter(({ performance }) => performance.riskFlags.some((flag) => flag.priority === "high")).length;
+  const weakListings = scoredListings.filter(({ performance }) => performance.listingScore < 70).length;
+  const missingKeyInfo = scoredListings.filter(({ performance }) => performance.missingFields.length > 0).length;
+  const underperforming = scoredListings.filter(({ performance, daysListed }) => performance.leadPotentialScore < 70 || daysListed >= 30).length;
+  const avgListingScore = average(scoredListings.map(({ performance }) => performance.listingScore));
+  const avgComplianceScore = average(scoredListings.map(({ performance }) => performance.complianceScore));
+  const estimatedMinutesSaved = savedListingRows.length * 18;
+  const priorityListings = [...scoredListings]
+    .sort((a, b) => a.performance.listingScore - b.performance.listingScore)
+    .slice(0, 5);
   const metricCards: Array<[string, string | number, LucideIcon]> = [
-    ["Listings generated this month", generated, Car],
-    ["Plan limit", limit === "unlimited" ? "Unlimited" : `${limit}/month`, Plus],
-    ["Saved listings", listings?.length || 0, Library],
-    ["Pending review", pendingReview, CheckCircle2],
-    ["High-risk claim checks", highRisk, ShieldAlert],
-    ["Active team members", teamMembers.length, Users],
+    ["Active vehicles", savedListingRows.length, Car],
+    ["Avg ListingFlow score", avgListingScore || "N/A", Gauge],
+    ["Avg compliance score", avgComplianceScore || "N/A", ShieldAlert],
+    ["Missing key info", missingKeyInfo, AlertTriangle],
+    ["Weak listings", weakListings, Search],
+    ["Likely underperforming", underperforming, TrendingUp],
   ];
 
   return (
@@ -104,7 +121,7 @@ export default async function DashboardPage() {
             </Badge>
             <h1 className="font-display text-4xl font-black leading-tight md:text-5xl">{dealership.name}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Generate accurate listings, review risk claims, and move inventory copy into the shared dealership library.
+              Monitor listing quality, compliance risk, search visibility, and lead potential across the dealership inventory.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -112,7 +129,7 @@ export default async function DashboardPage() {
               <Link href="/dashboard/new-listing"><Plus className="h-4 w-4" /> New Listing</Link>
             </Button>
             <Button asChild variant="outline" className="border-white/10 bg-white/[.035]">
-              <Link href="/dashboard/style-library"><Sparkles className="h-4 w-4" /> Style Library</Link>
+              <Link href="/dashboard/saved-listings"><Library className="h-4 w-4" /> Inventory Audit</Link>
             </Button>
             <Button asChild variant="outline" className="border-white/10 bg-white/[.035]">
               <Link href="/dashboard/bulk-intake"><FileSpreadsheet className="h-4 w-4" /> Bulk Intake</Link>
@@ -135,19 +152,56 @@ export default async function DashboardPage() {
         ))}
       </div>
 
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="app-card rounded-2xl border-white/10 bg-white/[.035] md:col-span-2">
+          <CardContent className="p-5">
+            <div className="text-sm text-muted-foreground">Estimated staff time saved</div>
+            <div className="mt-2 text-3xl font-semibold">
+              {Math.floor(estimatedMinutesSaved / 60)}h {estimatedMinutesSaved % 60}m
+            </div>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Based on generated listings and audit automation replacing manual rewrite/review passes.
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="app-card rounded-2xl border-white/10 bg-white/[.035]">
+          <CardContent className="p-5">
+            <div className="text-sm text-muted-foreground">Pending review</div>
+            <div className="mt-2 text-3xl font-semibold">{pendingReview}</div>
+            <p className="mt-2 text-sm text-muted-foreground">Listings waiting on approval workflow.</p>
+          </CardContent>
+        </Card>
+        <Card className="app-card rounded-2xl border-white/10 bg-white/[.035]">
+          <CardContent className="p-5">
+            <div className="text-sm text-muted-foreground">High-risk claims</div>
+            <div className="mt-2 text-3xl font-semibold">{highRisk}</div>
+            <p className="mt-2 text-sm text-muted-foreground">Fix these before publishing.</p>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <Card className="app-card rounded-2xl border-white/10">
           <CardHeader>
-            <CardTitle className="font-display text-2xl">Plan usage</CardTitle>
+            <CardTitle className="font-display text-2xl">Platform Readiness</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span>{generated} generations used</span>
-              <span>{limit === "unlimited" ? "Unlimited" : `${limit} monthly limit`}</span>
+          <CardContent className="space-y-4">
+            <div>
+              <div className="mb-2 flex items-center justify-between text-sm">
+                <span>Average ListingFlow score</span>
+                <span>{avgListingScore || 0}/100</span>
+              </div>
+              <Progress value={avgListingScore} />
             </div>
-            <Progress value={progressValue} />
+            <div>
+              <div className="mb-2 flex items-center justify-between text-sm">
+                <span>Average compliance score</span>
+                <span>{avgComplianceScore || 0}/100</span>
+              </div>
+              <Progress value={avgComplianceScore} />
+            </div>
             <p className="text-sm text-muted-foreground">
-              Usage is enforced server-side per dealership workspace and follows the active plan.
+              The score combines vehicle completeness, SEO, conversion copy, platform fit, and claim safety.
             </p>
           </CardContent>
         </Card>
@@ -174,17 +228,20 @@ export default async function DashboardPage() {
       <div className="grid gap-6 xl:grid-cols-2">
         <Card className="app-card rounded-2xl border-white/10">
           <CardHeader>
-            <CardTitle className="font-display text-2xl">Recent saved listings</CardTitle>
+            <CardTitle className="font-display text-2xl">Listings Needing Attention</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {listings?.length ? listings.map((listing) => (
+            {priorityListings.length ? priorityListings.map(({ listing, performance }) => (
               <Link
                 key={listing.id}
                 href={`/dashboard/saved-listings/${listing.id}`}
                 className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[.035] p-4 text-sm transition hover:border-white/22 hover:bg-white/[.06]"
               >
-                <span>{[listing.year, listing.make, listing.model].filter(Boolean).join(" ") || "Untitled listing"}</span>
-                <Badge variant="outline" className="border-white/10">{listing.status}</Badge>
+                <div>
+                  <span className="font-medium">{[listing.year, listing.make, listing.model, listing.trim].filter(Boolean).join(" ") || "Untitled listing"}</span>
+                  <p className="mt-1 text-xs text-muted-foreground">{performance.recommendedAction}</p>
+                </div>
+                <Badge variant="outline" className="border-white/10">{performance.listingScore}/100</Badge>
               </Link>
             )) : <p className="text-sm text-muted-foreground">No saved listings yet.</p>}
           </CardContent>
@@ -210,6 +267,10 @@ export default async function DashboardPage() {
                 Add team members so saved listings and review work are shared across the dealership.
               </div>
             )}
+            <div className="rounded-lg border border-white/10 bg-white/[.035] p-4 text-sm text-muted-foreground">
+              Usage this month: {generated} / {limit === "unlimited" ? "unlimited" : limit}. Team members: {teamMembers.length}.
+              <div className="mt-2"><Progress value={progressValue} /></div>
+            </div>
           </CardContent>
         </Card>
       </div>

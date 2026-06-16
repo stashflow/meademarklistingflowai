@@ -24,7 +24,10 @@ export default async function SavedListingsPage() {
     <main className="p-6">
       <Card className="app-card">
         <CardHeader>
-          <CardTitle>Shared listing library</CardTitle>
+          <CardTitle>Inventory Audit</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Review saved vehicles by ListingFlow score, compliance risk, lead potential, search visibility, and missing optimization work.
+          </p>
         </CardHeader>
         <CardContent>
           <SavedListingsTable
