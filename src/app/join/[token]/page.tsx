@@ -23,37 +23,20 @@ export default async function JoinInvitePage({ params }: { params: Promise<{ tok
     message = "Create an account or log in first, then reopen this invite link.";
     ok = false;
   } else {
-    const { data: invite } = await supabase
-      .from("dealership_invites")
-      .select("*")
-      .eq("token", token)
-      .maybeSingle();
-
-    // Server-only invite validation needs wall-clock time for expiry.
-    // eslint-disable-next-line react-hooks/purity
-    const expired = invite?.expires_at && new Date(invite.expires_at).getTime() < Date.now();
-    if (!invite || invite.used_at || expired) {
+    const { data, error } = await supabase.rpc("accept_dealership_invite", {
+      invite_token: token,
+    });
+    const accepted = Array.isArray(data) ? data[0] : null;
+    if (error || !accepted) {
       title = "Invalid invite link";
-      message = "This invite link is invalid, expired, or already used.";
+      message = error?.message?.includes("already used")
+        ? "This invite has already been used by another account."
+        : error?.message?.includes("expired")
+          ? "This invite link has expired. Ask the dealership to send a new one."
+          : "This invite link is invalid.";
       ok = false;
     } else {
-      await supabase.from("dealership_members").upsert(
-        {
-          dealership_id: invite.dealership_id,
-          user_id: user.id,
-          role: invite.role || "staff",
-          status: "active",
-        },
-        { onConflict: "dealership_id,user_id" },
-      );
-      await supabase
-        .from("profiles")
-        .update({ active_dealership_id: invite.dealership_id })
-        .eq("user_id", user.id);
-      await supabase
-        .from("dealership_invites")
-        .update({ used_at: new Date().toISOString() })
-        .eq("id", invite.id);
+      message = `You now have access to ${accepted.dealership_name}.`;
     }
   }
 

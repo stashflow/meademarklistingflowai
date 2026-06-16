@@ -132,7 +132,7 @@ async function summarizeIntelligence(input: {
     recallSummary: input.recalls.length
       ? `${input.recalls.length} NHTSA recall record(s) were found for this year, make, and model. Staff should check open recall status before publishing.`
       : "No NHTSA recall records were returned for this year, make, and model lookup.",
-    valueNotes: "No live market-value provider is connected. Use dealership pricing and staff review for value claims.",
+    valueNotes: "",
     strengths: [],
     cautions: ["Do not claim clean title, no accidents, one owner, warranty, or open-recall status unless confirmed by staff or a trusted source."],
     listingAngles: [],
@@ -149,7 +149,7 @@ async function summarizeIntelligence(input: {
         {
           role: "system",
           content:
-            "You validate free NHTSA vehicle data for dealership listing software. Summarize only the supplied data. Do not invent safety ratings, title status, accident history, market value, warranty, open recall status, or features. If data is missing, say it is missing.",
+            "You validate free NHTSA vehicle data for dealership listing software. Summarize only the supplied data. Do not invent safety ratings, title status, accident history, market value, warranty, open recall status, or features. Leave valueNotes empty because no market-value source is supplied. If other data is missing, say it is missing.",
         },
         {
           role: "user",

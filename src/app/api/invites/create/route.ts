@@ -4,10 +4,12 @@ import { z } from "zod";
 import { getDealershipContext } from "@/lib/permissions";
 import { checkRateLimit, rateLimitedResponse } from "@/lib/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const schema = z.object({
   dealershipId: z.string().uuid(),
   role: z.enum(["manager", "staff"]).default("staff"),
+  email: z.string().trim().email().optional(),
   expiresInDays: z.number().min(1).max(30).optional(),
 });
 
@@ -67,9 +69,29 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
+    const inviteUrl = `${new URL(request.url).origin}/join/${token}`;
+    let emailSent = false;
+    let emailMessage = "";
+    if (parsed.data.email) {
+      const admin = getSupabaseAdminClient();
+      const { error: emailError } = await admin.auth.admin.inviteUserByEmail(parsed.data.email, {
+        redirectTo: inviteUrl,
+        data: {
+          dealership_id: parsed.data.dealershipId,
+          dealership_role: parsed.data.role,
+        },
+      });
+      emailSent = !emailError;
+      emailMessage = emailError
+        ? "The invite link was created, but Supabase could not send the email. You can copy and share the link below."
+        : `Invite email sent to ${parsed.data.email}.`;
+    }
+
     return NextResponse.json({
       invite: data,
-      url: `${new URL(request.url).origin}/join/${token}`,
+      url: inviteUrl,
+      emailSent,
+      message: parsed.data.email ? emailMessage : "Invite link created.",
     });
   } catch (error) {
     return NextResponse.json(

@@ -30,7 +30,13 @@ function conciseReviewWarnings(
   inputWarnings: string[],
 ) {
   const specificWarnings = warnings.filter(
-    (warning) => !/^(missing|please provide|add more)\b/i.test(warning.trim()),
+    (warning) => {
+      const value = warning.trim();
+      if (/^(missing|please provide|add more)\b/i.test(value)) return false;
+      if (vehicle.trim && /\btrim\b.*\b(unconfirmed|not confirmed|unsure|verify)\b/i.test(value)) return false;
+      if (/\b(clean title|no accidents?|one[- ]owner|service history|warranty|financing)\b.*\b(unless|cannot|not provided|not entered|verify)\b/i.test(value)) return false;
+      return true;
+    },
   );
   const contextualWarnings = [
     !vehicle.trim ? "Trim is unconfirmed, so trim-specific claims were omitted." : null,

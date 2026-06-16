@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BarChart3, Car, FileSpreadsheet, Library, Palette, Search, Settings, ShieldCheck, Users } from "lucide-react";
+import { BarChart3, Car, FileSpreadsheet, Layers3, Library, Palette, Search, Settings, ShieldCheck, TrendingUp, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,9 @@ import { Input } from "@/components/ui/input";
 const baseActions = [
   { label: "New listing", href: "/dashboard/new-listing", icon: Car, keywords: "generate vehicle create" },
   { label: "Bulk inventory intake", href: "/dashboard/bulk-intake", icon: FileSpreadsheet, keywords: "csv spreadsheet import queue" },
-  { label: "Saved listings", href: "/dashboard/saved-listings", icon: Library, keywords: "library drafts published copy" },
+  { label: "Inventory Audit", href: "/dashboard/saved-listings", icon: Library, keywords: "library drafts published copy archive delete weak listings" },
+  { label: "Scoring", href: "/dashboard/scoring", icon: TrendingUp, keywords: "listingflow score compliance seo lead potential visibility algorithm" },
+  { label: "Feature Map", href: "/dashboard/features", icon: Layers3, keywords: "features sales demo roadmap main supplemental" },
   { label: "Style library", href: "/dashboard/style-library", icon: Palette, keywords: "profile examples voice" },
   { label: "Team", href: "/dashboard/team", icon: Users, keywords: "invite roles members approvals" },
   { label: "Settings", href: "/dashboard/settings", icon: Settings, keywords: "features animation account dealership" },

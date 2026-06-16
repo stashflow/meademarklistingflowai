@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ArrowLeft, Archive, Check, CheckCircle2, ChevronRight, Clipboard, FileText, HelpCircle, ImageIcon, PanelLeftClose, PanelLeftOpen, ScanLine, Save, ShieldAlert, Sparkles, Wand2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Archive, Check, CheckCircle2, ChevronRight, Clipboard, FileText, HelpCircle, ImageIcon, PanelLeftClose, PanelLeftOpen, RotateCcw, ScanLine, Save, ShieldAlert, Sparkles, Wand2 } from "lucide-react";
 import { formatFeatureLabel } from "@/lib/generation/feature-highlights";
 import { hasMeaningfulDraftData } from "@/lib/drafts";
 import { isCompleteVin, parseVehicleStartInput } from "@/lib/generation/vehicle-start";
@@ -11,11 +11,13 @@ import { ListingFlowLoader } from "@/components/common/listingflow-loader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { scoreListingPerformance } from "@/lib/listing-performance";
 import { normalizeNumber } from "@/lib/validators/listing";
@@ -42,7 +44,6 @@ const vehicleFields: Array<[keyof VehicleInput, string, string]> = [
 ];
 
 const conditionFields: Array<[keyof VehicleInput, string]> = [
-  ["condition", "Required condition"],
   ["overallCondition", "Overall condition"],
   ["accidentHistory", "Accident history"],
   ["titleStatus", "Title status"],
@@ -68,6 +69,15 @@ const imageFields: Array<[keyof VehicleInput, string, string]> = [
 ];
 
 const platforms = ["Facebook Marketplace", "CarGurus", "Dealer Website", "Craigslist", "AutoTrader-style", "Short SEO", "Highlights only"];
+
+const listingContentOptions = [
+  ["coreVehicleDetails", "Core vehicle details", true],
+  ["mainFeatures", "Main features", true],
+  ["allConfirmedFeatures", "All confirmed features", false],
+  ["conditionSummary", "Condition summary", true],
+  ["recentMaintenance", "Recent maintenance", true],
+  ["safetyAndRecallContext", "Safety and recall context", false],
+] as const;
 
 const outputTabs: Array<[keyof ListingOutput, string]> = [
   ["facebookListing", "Facebook"],
@@ -141,6 +151,7 @@ export function ListingGenerator({
   const [loading, setLoading] = useState(false);
   const [decodingVin, setDecodingVin] = useState(false);
   const [vinConfirmed, setVinConfirmed] = useState(Boolean(stagedDraft.vehicle.year && stagedDraft.vehicle.make && stagedDraft.vehicle.model));
+  const [vinConfirmFlash, setVinConfirmFlash] = useState(false);
   const [fillInOpen, setFillInOpen] = useState(false);
   const [fillInLoading, setFillInLoading] = useState(false);
   const [fillInQuestions, setFillInQuestions] = useState<FillInQuestion[]>([]);
@@ -166,6 +177,14 @@ export function ListingGenerator({
   const [linkedListingId, setLinkedListingId] = useState<string | null>(initialDraft?.listing_id || null);
   const [batchItemId, setBatchItemId] = useState<string | null>(initialDraft?.batch_item_id || null);
   const [fillInNoticeVisible, setFillInNoticeVisible] = useState(autoOpenFillIn && !fillInIntroSeen);
+  const [listingContent, setListingContent] = useState({
+    coreVehicleDetails: true,
+    mainFeatures: true,
+    allConfirmedFeatures: false,
+    conditionSummary: true,
+    recentMaintenance: true,
+    safetyAndRecallContext: false,
+  });
   const lastDecodedVin = useRef("");
   const autosaveReady = useRef(false);
   const draftVersionRef = useRef(initialDraft?.autosave_version || 1);
@@ -328,6 +347,25 @@ export function ListingGenerator({
     }
   }
 
+  function confirmVinDetails() {
+    setVinConfirmed(true);
+    setVinConfirmFlash(true);
+    setMessage("");
+    window.setTimeout(() => setVinConfirmFlash(false), 900);
+  }
+
+  function resetVinVehicle() {
+    lastDecodedVin.current = "";
+    setVehicle({});
+    setOutput(null);
+    setStartText("");
+    setVinConfirmed(false);
+    setVinConfirmFlash(false);
+    setTrimResearch(null);
+    setFillInOpen(false);
+    setMessage("VIN details cleared. Enter another VIN or vehicle.");
+  }
+
   function startFromText() {
     const parsed = parseVehicleStartInput(startText);
     if (!hasMeaningfulDraftData(parsed)) {
@@ -434,7 +472,39 @@ export function ListingGenerator({
         }),
       });
       const payload = await response.json();
-      if (response.ok) setTrimResearch(payload);
+      if (response.ok) {
+        setTrimResearch(payload);
+        const researchQuestions: FillInQuestion[] = (payload.questions || []).map((question: {
+          id: string;
+          label: string;
+          helper: string;
+          why: string;
+          inputType: "choice" | "yes_no_unknown" | "text";
+          options?: Array<{ label: string; supportsTrims?: string[] }>;
+        }) => ({
+          id: `trim_research_${question.id}`,
+          label: question.label,
+          helper: question.helper,
+          why: question.why,
+          inputType: question.inputType === "text" ? "text" : "choice",
+          options: question.inputType === "yes_no_unknown"
+            ? ["Yes", "No", "I don't know"]
+            : (question.options || []).map((option) =>
+                option.supportsTrims?.length
+                  ? `${option.label} — ${option.supportsTrims.join(", ")}`
+                  : option.label,
+              ),
+          category: "identity",
+          fieldHint: "trim",
+        }));
+        if (researchQuestions.length) {
+          setFillInQuestions((current) => {
+            const trimQuestion = current.find((question) => question.id.toLowerCase().includes("trim"));
+            const otherQuestions = current.filter((question) => question !== trimQuestion && !question.id.startsWith("trim_research_"));
+            return [...(trimQuestion ? [trimQuestion] : []), ...researchQuestions, ...otherQuestions].slice(0, 8);
+          });
+        }
+      }
     } finally {
       setTrimResearchLoading(false);
     }
@@ -686,6 +756,7 @@ export function ListingGenerator({
         return;
       }
       const decodedVehicle = { ...vehicle, ...payload.decoded, vin };
+      delete decodedVehicle.vehicleValueNotes;
       setVehicle(decodedVehicle);
       setVinConfirmed(false);
       setMessage("VIN decoded. Confirm the vehicle details, then add mileage, condition, and selling points.");
@@ -767,6 +838,7 @@ export function ListingGenerator({
     try {
       const generationVehicle = {
         ...vehicle,
+        condition: vehicle.overallCondition || vehicle.condition,
         financingInfo: vehicle.financingInfo || (useSavedFinancing ? listingDefaults.financingLanguage : undefined),
         warrantyInfo: vehicle.warrantyInfo || (useSavedWarranty ? listingDefaults.warrantyLanguage : undefined),
       };
@@ -783,6 +855,7 @@ export function ListingGenerator({
             useStyleProfile,
             customInstructions: [
               customInstructions,
+              `Listing content selections: ${JSON.stringify(listingContent)}. Include every selected category when supported by confirmed input. "Main features" means the strongest buyer-relevant confirmed equipment. "All confirmed features" means include the complete confirmed feature set without inventing equipment.`,
               vehicle.validatedFeaturesJson
                 ? `LF Fill In validated features JSON: ${vehicle.validatedFeaturesJson}. Use confirmed features confidently. Mark uncertain features clearly and do not upgrade them to confirmed.`
                 : "",
@@ -1095,8 +1168,12 @@ export function ListingGenerator({
             </Button>
           </div>
         )}
-        {fillInOpen && (
-          <div className="m-5 overflow-hidden rounded-2xl border border-red-500/25 bg-[#0B0D10]/95">
+        <Dialog open={fillInOpen} onOpenChange={setFillInOpen}>
+          <DialogContent
+            showCloseButton
+            className="max-h-[92vh] max-w-5xl gap-0 overflow-y-auto border border-red-500/25 bg-[#0B0D10] p-0 shadow-[0_30px_120px_rgba(0,0,0,.72)] sm:max-w-5xl"
+          >
+          <div className="overflow-hidden">
             <div className="border-b border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(220,38,38,0.18),transparent_42%)] p-5">
               <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                 <div className="flex items-center gap-3">
@@ -1108,7 +1185,6 @@ export function ListingGenerator({
                     <p className="text-sm text-muted-foreground">A guided intake that confirms identity, trim, specs, condition, and safe feature highlights.</p>
                   </div>
                 </div>
-                <Button variant="ghost" onClick={() => setFillInOpen(false)}>Close</Button>
               </div>
               {!!fillInQuestions.length && (
                 <div className="mt-5">
@@ -1327,7 +1403,8 @@ export function ListingGenerator({
               )}
             </div>
           </div>
-        )}
+          </DialogContent>
+        </Dialog>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mx-5 mt-5 grid h-auto grid-cols-2 gap-1 md:grid-cols-5">
             <TabsTrigger value="vehicle">Vehicle Details</TabsTrigger>
@@ -1344,8 +1421,7 @@ export function ListingGenerator({
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <ScanLine className="h-5 w-5 text-primary" />
-                    <Label htmlFor="vin-command" className="font-display text-2xl text-white">VIN to listing</Label>
-                    <Badge className="border-red-500/30 bg-red-500/10 text-red-100">Recommended start</Badge>
+                    <Label htmlFor="vin-command" className="font-display text-2xl text-white">VIN TO LISTING</Label>
                   </div>
                   <Input
                     id="vin-command"
@@ -1355,9 +1431,6 @@ export function ListingGenerator({
                     className="h-11 max-w-xl font-mono text-base uppercase tracking-[0.08em]"
                     maxLength={17}
                   />
-                  <p className="text-xs leading-5 text-muted-foreground">
-                    ListingFlow uses NHTSA VPIC to decode basic vehicle data. Staff still confirms mileage, condition, title, accident history, warranty, and selling points before generation.
-                  </p>
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
                   <Button onClick={decodeVin} disabled={decodingVin || loading} className="bg-primary text-primary-foreground hover:bg-red-500">
@@ -1366,29 +1439,42 @@ export function ListingGenerator({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setVinConfirmed(true)}
+                    onClick={confirmVinDetails}
                     disabled={!vehicle.year || !vehicle.make || !vehicle.model}
-                    className="border-white/10 bg-white/[.035]"
+                    className="border-emerald-400/25 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/15"
                   >
                     <Check className="h-4 w-4" />
-                    Confirm details
+                    Confirm
                   </Button>
+                  {(vehicle.vinDecoded === "true" || vehicle.year || vehicle.make || vehicle.model) && (
+                    <Button type="button" variant="ghost" size="sm" onClick={resetVinVehicle} className="text-xs text-zinc-500 hover:text-white">
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Decline and reset
+                    </Button>
+                  )}
                 </div>
               </div>
-              <div className="relative mt-4 grid gap-3 md:grid-cols-5">
-                {[
-                  ["Decoded", vehicle.vinDecoded === "true" ? "Yes" : "Not yet"],
-                  ["Source", vehicle.vinDecodeSource || "Manual entry"],
-                  ["Confirmed", vinConfirmed ? "Ready" : "Needs staff review"],
-                  ["Intel", vehicle.vehicleIntelligenceScore ? `${vehicle.vehicleIntelligenceScore}/100` : "Not checked"],
-                  ["Vehicle", vehicleName || "Waiting for VIN"],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-lg border border-white/10 bg-white/[.035] p-3">
-                    <div className="text-[10px] uppercase text-muted-foreground">{label}</div>
-                    <div className="mt-1 truncate text-sm font-medium">{value}</div>
+              {(vehicle.vinDecoded === "true" || vehicle.year || vehicle.make || vehicle.model) && (
+                <div className="relative mt-4 rounded-xl border border-white/10 bg-white/[.035] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="font-display text-xl text-white">{vehicleName || "Vehicle details found"}</div>
+                      <div className="mt-1 font-mono text-xs text-zinc-500">{vehicle.vin}</div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-xs text-zinc-300">
+                      {vehicle.engine && <span>{vehicle.engine}</span>}
+                      {vehicle.transmission && <span>• {vehicle.transmission}</span>}
+                      {vehicle.drivetrain && <span>• {vehicle.drivetrain}</span>}
+                    </div>
                   </div>
-                ))}
-              </div>
+                  {vinConfirmFlash && (
+                    <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-[#0B0D10]/94 text-sm font-semibold text-emerald-200 animate-in fade-in zoom-in-95">
+                      <CheckCircle2 className="mr-2 h-5 w-5" />
+                      Confirmed
+                    </div>
+                  )}
+                </div>
+              )}
               {vehicle.vinDecodeWarnings && (
                 <div className="relative mt-4 rounded-lg border border-amber-400/20 bg-amber-400/10 p-3 text-xs leading-5 text-amber-100">
                   {vehicle.vinDecodeWarnings}
@@ -1406,11 +1492,6 @@ export function ListingGenerator({
                       <p className="mt-2 text-sm leading-6 text-zinc-300">{value || "No NHTSA data returned."}</p>
                     </div>
                   ))}
-                </div>
-              )}
-              {vehicle.vehicleValueNotes && (
-                <div className="relative mt-4 rounded-lg border border-white/10 bg-white/[.035] p-3 text-xs leading-5 text-zinc-300">
-                  {vehicle.vehicleValueNotes}
                 </div>
               )}
               {vehicle.vehicleIntelligenceWarnings && (
@@ -1513,13 +1594,32 @@ export function ListingGenerator({
               <div className="grid gap-4 md:grid-cols-3">
                 {conditionFields.map(([key, label]) => (
                   <div key={key} className="space-y-2">
-                    <Label>{label}</Label>
+                    <div className="flex items-center gap-1.5">
+                      <Label>{label}</Label>
+                      {key === "overallCondition" && (
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={<button type="button" className="text-zinc-500 hover:text-white" aria-label="What overall condition means" />}
+                          >
+                            <HelpCircle className="h-3.5 w-3.5" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            A short, honest summary of the vehicle as it sits today, including notable wear or damage.
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
                     {["condition", "overallCondition", "tireCondition", "interiorCondition", "exteriorCondition"].includes(String(key)) ? (
                       <div className="relative">
                         <Input
                           data-field={key}
-                          value={vehicle[key] || ""}
-                          onChange={(event) => updateVehicle(key, event.target.value)}
+                          value={key === "overallCondition" ? vehicle.overallCondition || vehicle.condition || "" : vehicle[key] || ""}
+                          onChange={(event) => {
+                            updateVehicle(key, event.target.value);
+                            if (key === "overallCondition") {
+                              setVehicle((current) => ({ ...current, condition: event.target.value }));
+                            }
+                          }}
                           className={`${needsField(key) ? "border-amber-400/60 bg-amber-400/10" : ""} pr-10`}
                         />
                         <LfQuickFillButton field={key} />
@@ -1661,6 +1761,21 @@ export function ListingGenerator({
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {selectedPlatforms.map((platform) => <Badge key={platform} variant="outline" className="border-white/10">{platform}</Badge>)}
+                </div>
+                <div className="mt-5 border-t border-white/10 pt-4">
+                  <div className="mb-3 text-sm font-semibold text-white">List:</div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {listingContentOptions.map(([key, label, recommended]) => (
+                      <label key={String(key)} className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/[.025] px-3 py-2.5 text-sm">
+                        <Checkbox
+                          checked={listingContent[key as keyof typeof listingContent]}
+                          onCheckedChange={(checked) => setListingContent((current) => ({ ...current, [key]: Boolean(checked) }))}
+                        />
+                        <span className="min-w-0 flex-1">{label}</span>
+                        {recommended && <span className="text-[10px] uppercase text-red-200">Recommended</span>}
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-[#0B0D10]/80 p-5">

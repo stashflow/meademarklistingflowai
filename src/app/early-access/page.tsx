@@ -8,7 +8,7 @@ export default function EarlyAccessPage() {
       <BrandMark />
       <Card className="app-card mt-10">
         <CardHeader>
-          <CardTitle>Early access</CardTitle>
+          <CardTitle>Contact MeadeMark Labs</CardTitle>
         </CardHeader>
         <CardContent>
           <EarlyAccessForm />

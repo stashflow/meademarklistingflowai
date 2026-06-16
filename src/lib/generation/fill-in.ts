@@ -123,18 +123,6 @@ export function localFillInQuestions(vehicle: VehicleInput): FillInQuestion[] {
       why: "VIN data fills what it can. Missing specs should be confirmed or marked unsure.",
     });
   }
-  if (!vehicle.keyFeatures || !vehicle.validatedFeaturesJson) {
-    questions.push({
-      id: "features",
-      label: "Which features can staff see or verify?",
-      helper: "Examples: backup camera, heated seats, Apple CarPlay, blind spot monitoring, remote start, navigation, third row, tow package.",
-      fieldHint: "keyFeatures",
-      inputType: "textarea",
-      category: "features",
-      required: true,
-      why: "Confirmed features become clean highlight chips and stronger listing copy.",
-    });
-  }
   return prioritizeTrimQuestion(questions).slice(0, 8);
 }
 
@@ -158,7 +146,7 @@ export async function generateFillInQuestions(vehicle: VehicleInput): Promise<Fi
         {
           role: "system",
           content:
-            "Create short dealership staff questions to fill missing vehicle listing fields. Ask simple one-at-a-time questions that help confirm the actual year, make, model, trim, specs, condition, and safe selling points. Do not ask for sensitive claims unless staff can verify them. Return strict JSON.",
+            "Create short dealership staff questions to fill missing vehicle listing fields. Ask simple one-at-a-time questions that help confirm the actual year, make, model, trim, specs, condition, and safe selling points. Feature questions must ask whether the vehicle has one specific visible feature that distinguishes likely trims, never ask the user to list features generally. Do not ask for sensitive claims unless staff can verify them. Return strict JSON.",
         },
         {
           role: "user",
@@ -184,8 +172,10 @@ ${JSON.stringify(vehicle, null, 2)}
 
 Rules:
 - Ask no more than 8 questions.
-- Prioritize confirming actual model/trim, missing mechanical specs, mileage, condition, visible features, recent maintenance, title status, accident history, and seller notes.
-- If trim is missing or ambiguous, ask deciding-factor questions that staff can answer by looking at badges, window stickers, seats, screen, wheels, drivetrain, or packages.
+- Prioritize confirming actual model/trim, missing mechanical specs, mileage, condition, recent maintenance, title status, accident history, and seller notes.
+- If trim is missing or ambiguous, ask yes/no/unknown deciding-factor questions such as "Does this vehicle have the panoramic roof?" using one specific visible feature per question.
+- Never ask "What features does the car have?" or any open-ended feature inventory question.
+- Every feature question must explain which trim possibilities the answer helps distinguish.
 - If engine, transmission, drivetrain, fuel type, or MPG are missing, ask for a listing sheet/window sticker/source confirmation rather than guessing.
 - Include 2-5 answer options for title status and accident history.
 - Mark required true only for identity, mileage, condition, and selling-point questions needed to proceed.

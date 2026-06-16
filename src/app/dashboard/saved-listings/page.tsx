@@ -26,7 +26,7 @@ export default async function SavedListingsPage() {
         <CardHeader>
           <CardTitle>Inventory Audit</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Review saved vehicles by ListingFlow score, compliance risk, lead potential, search visibility, and missing optimization work.
+            Review saved vehicles by ListingFlow score, compliance risk, lead potential, search visibility, and missing optimization work. Archive old inventory; delete only true mistakes.
           </p>
         </CardHeader>
         <CardContent>

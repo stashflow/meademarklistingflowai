@@ -76,7 +76,7 @@ export default async function DashboardPage() {
         .maybeSingle(),
     ]);
 
-  const savedListingRows = (listings || []) as SavedListing[];
+  const savedListingRows = ((listings || []) as SavedListing[]).filter((listing) => listing.status !== "archived");
   const scoredListings = savedListingRows.map((listing) => ({
     listing,
     performance: scoreSavedListing(listing),

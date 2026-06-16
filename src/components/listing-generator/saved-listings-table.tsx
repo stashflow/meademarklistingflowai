@@ -3,7 +3,18 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { AlertTriangle, Copy, Search, Trash2 } from "lucide-react";
+import { AlertTriangle, Archive, ArchiveRestore, Copy, Search, Trash2 } from "lucide-react";
+import { CollapsibleSection } from "@/components/common/collapsible-section";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +36,18 @@ export function SavedListingsTable({
   const [status, setStatus] = useState("all");
   const [auditFilter, setAuditFilter] = useState("all");
   const [rows, setRows] = useState(listings);
+  const [message, setMessage] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<SavedListing | null>(null);
+
+  const inventorySummary = useMemo(() => {
+    const scored = rows.map((listing) => ({ listing, performance: scoreSavedListing(listing) }));
+    return {
+      active: rows.filter((listing) => listing.status !== "archived").length,
+      archived: rows.filter((listing) => listing.status === "archived").length,
+      weak: scored.filter(({ performance }) => performance.listingScore < 70).length,
+      risk: scored.filter(({ performance }) => performance.riskFlags.some((flag) => flag.priority === "high")).length,
+    };
+  }, [rows]);
 
   const filtered = useMemo(() => {
     return rows.filter((listing) => {
@@ -55,21 +78,54 @@ export function SavedListingsTable({
     }).sort((a, b) => scoreSavedListing(a).listingScore - scoreSavedListing(b).listingScore);
   }, [auditFilter, query, rows, status]);
 
-  async function deleteListing(id: string) {
+  async function archiveListing(listing: SavedListing, archived: boolean) {
+    setMessage("");
     const supabase = createSupabaseBrowserClient();
-    const listing = rows.find((row) => row.id === id);
     const { data: auth } = await supabase.auth.getUser();
-    const { error } = await supabase.from("listings").delete().eq("id", id);
+    const nextStatus = archived ? "archived" : "draft";
+    const { error } = await supabase
+      .from("listings")
+      .update({
+        status: nextStatus,
+        approval_status: nextStatus,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", listing.id);
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+    await supabase.from("audit_logs").insert({
+      dealership_id: listing.dealership_id,
+      actor_user_id: auth.user?.id || null,
+      entity_type: "listing",
+      entity_id: listing.id,
+      action: archived ? "archived" : "unarchived",
+      before_data: { status: listing.status },
+      after_data: { status: nextStatus },
+    });
+    setRows((current) => current.map((row) => row.id === listing.id ? { ...row, status: nextStatus, approval_status: nextStatus } : row));
+    setMessage(archived ? "Listing archived. It is hidden from active inventory metrics." : "Listing restored as a draft.");
+  }
+
+  async function deleteListing(listing: SavedListing) {
+    const supabase = createSupabaseBrowserClient();
+    const { data: auth } = await supabase.auth.getUser();
+    const { error } = await supabase.from("listings").delete().eq("id", listing.id);
     if (!error) {
       await supabase.from("audit_logs").insert({
-        dealership_id: listing?.dealership_id || null,
+        dealership_id: listing.dealership_id,
         actor_user_id: auth.user?.id || null,
         entity_type: "listing",
-        entity_id: id,
+        entity_id: listing.id,
         action: "deleted",
         before_data: listing || null,
       });
-      setRows((current) => current.filter((listing) => listing.id !== id));
+      setRows((current) => current.filter((row) => row.id !== listing.id));
+      setPendingDelete(null);
+      setMessage("Listing permanently deleted.");
+    } else {
+      setMessage(error.message);
     }
   }
 
@@ -82,6 +138,7 @@ export function SavedListingsTable({
       id: undefined,
       created_by: auth.user.id,
       status: "draft",
+      approval_status: "draft",
       internal_notes: `Duplicated from ${listing.id}`,
     };
     const { data } = await supabase.from("listings").insert(copy).select("*").single();
@@ -100,43 +157,60 @@ export function SavedListingsTable({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 md:grid-cols-[1fr_220px_240px]">
-        <div className="flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search VIN, stock number, year, make, model"
-            className="border-0 bg-transparent"
-          />
-        </div>
-        <Select value={status} onValueChange={(value) => value && setStatus(value)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="pending_review">Pending review</SelectItem>
-            <SelectItem value="changes_requested">Changes requested</SelectItem>
-            <SelectItem value="reviewed">Reviewed</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="published">Published</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={auditFilter} onValueChange={(value) => value && setAuditFilter(value)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All audit filters</SelectItem>
-            <SelectItem value="score_below_70">Score below 70</SelectItem>
-            <SelectItem value="high_risk">High-risk claims</SelectItem>
-            <SelectItem value="missing_photos">Missing photos</SelectItem>
-            <SelectItem value="weak_seo">Weak SEO</SelectItem>
-            <SelectItem value="no_cta">No CTA</SelectItem>
-            <SelectItem value="missing_trim">Missing trim</SelectItem>
-            <SelectItem value="stale">Stale listing</SelectItem>
-            <SelectItem value="needs_rewrite">Needs rewrite</SelectItem>
-          </SelectContent>
-        </Select>
+      {message && <p className="rounded-lg border border-white/10 bg-white/[.035] px-3 py-2 text-sm text-muted-foreground">{message}</p>}
+      <div className="grid gap-3 sm:grid-cols-4">
+        {[
+          ["Active", inventorySummary.active],
+          ["Archived", inventorySummary.archived],
+          ["Weak", inventorySummary.weak],
+          ["High risk", inventorySummary.risk],
+        ].map(([label, value]) => (
+          <div key={label} className="rounded-xl border border-white/10 bg-white/[.035] p-3">
+            <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{label}</div>
+            <div className="mt-1 text-2xl font-semibold">{value}</div>
+          </div>
+        ))}
       </div>
+      <CollapsibleSection title="Search and Filters" description="Collapse this once your audit view is dialed in.">
+        <div className="grid gap-3 md:grid-cols-[1fr_220px_240px]">
+          <div className="flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search VIN, stock number, year, make, model"
+              className="border-0 bg-transparent"
+            />
+          </div>
+          <Select value={status} onValueChange={(value) => value && setStatus(value)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="pending_review">Pending review</SelectItem>
+              <SelectItem value="changes_requested">Changes requested</SelectItem>
+              <SelectItem value="reviewed">Reviewed</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="published">Published</SelectItem>
+              <SelectItem value="archived">Archived</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={auditFilter} onValueChange={(value) => value && setAuditFilter(value)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All audit filters</SelectItem>
+              <SelectItem value="score_below_70">Score below 70</SelectItem>
+              <SelectItem value="high_risk">High-risk claims</SelectItem>
+              <SelectItem value="missing_photos">Missing photos</SelectItem>
+              <SelectItem value="weak_seo">Weak SEO</SelectItem>
+              <SelectItem value="no_cta">No CTA</SelectItem>
+              <SelectItem value="missing_trim">Missing trim</SelectItem>
+              <SelectItem value="stale">Stale listing</SelectItem>
+              <SelectItem value="needs_rewrite">Needs rewrite</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </CollapsibleSection>
 
       <div className="overflow-hidden rounded-md border border-white/10">
         <Table>
@@ -182,11 +256,21 @@ export function SavedListingsTable({
                   </TableCell>
                   <TableCell><Badge variant="outline" className="border-white/10">{listing.status}</Badge></TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => duplicateListing(listing)}>
+                    <Button variant="ghost" size="icon" onClick={() => duplicateListing(listing)} title="Duplicate listing">
                       <Copy className="h-4 w-4" />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => archiveListing(listing, listing.status !== "archived")}
+                      title={listing.status === "archived" ? "Restore listing" : "Archive listing"}
+                    >
+                      {listing.status === "archived"
+                        ? <ArchiveRestore className="h-4 w-4 text-emerald-200" />
+                        : <Archive className="h-4 w-4 text-zinc-300" />}
+                    </Button>
                     {canDelete && (
-                      <Button variant="ghost" size="icon" onClick={() => deleteListing(listing.id)}>
+                      <Button variant="ghost" size="icon" onClick={() => setPendingDelete(listing)} title="Delete permanently">
                         <Trash2 className="h-4 w-4 text-red-300" />
                       </Button>
                     )}
@@ -197,6 +281,22 @@ export function SavedListingsTable({
           </TableBody>
         </Table>
       </div>
+      <AlertDialog open={Boolean(pendingDelete)} onOpenChange={(open) => !open && setPendingDelete(null)}>
+        <AlertDialogContent className="border border-red-500/25 bg-[#0B0D10]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this listing permanently?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Archiving is safer for old inventory. Delete only if this listing was created by mistake and should be removed from the dealership library.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-red-600 text-white hover:bg-red-500" onClick={() => pendingDelete && deleteListing(pendingDelete)}>
+              Delete listing
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -1,7 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Clipboard, Gauge, Save, Search, ShieldAlert, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, Archive, ArchiveRestore, CheckCircle2, Clipboard, Gauge, Save, Search, ShieldAlert, Sparkles, Trash2 } from "lucide-react";
+import { CollapsibleSection } from "@/components/common/collapsible-section";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,10 +34,12 @@ const tabs: Array<[keyof ListingOutput, string]> = [
   ["disclaimer", "Notes"],
 ];
 
-export function ListingDetailEditor({ listing, images = [] }: { listing: SavedListing; images?: ListingImage[] }) {
+export function ListingDetailEditor({ listing, images = [], canDelete = false }: { listing: SavedListing; images?: ListingImage[]; canDelete?: boolean }) {
+  const router = useRouter();
   const [output, setOutput] = useState<ListingOutput>(listing.generated_output);
   const [status, setStatus] = useState<ListingStatus>(listing.status);
   const [message, setMessage] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const performance = useMemo(() => (
     output === listing.generated_output
       ? scoreSavedListing(listing, images.length)
@@ -88,6 +102,56 @@ export function ListingDetailEditor({ listing, images = [] }: { listing: SavedLi
     setMessage(error ? error.message : "Listing updated.");
   }
 
+  async function archive(archived: boolean) {
+    const supabase = createSupabaseBrowserClient();
+    const { data: auth } = await supabase.auth.getUser();
+    const nextStatus = archived ? "archived" : "draft";
+    const { error } = await supabase
+      .from("listings")
+      .update({
+        status: nextStatus,
+        approval_status: nextStatus,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", listing.id);
+    if (!error) {
+      await supabase.from("audit_logs").insert({
+        dealership_id: listing.dealership_id,
+        actor_user_id: auth.user?.id || null,
+        entity_type: "listing",
+        entity_id: listing.id,
+        action: archived ? "archived" : "unarchived",
+        before_data: { status },
+        after_data: { status: nextStatus },
+      });
+      setStatus(nextStatus);
+      setMessage(archived ? "Listing archived." : "Listing restored as a draft.");
+      router.refresh();
+      return;
+    }
+    setMessage(error.message);
+  }
+
+  async function deleteListing() {
+    const supabase = createSupabaseBrowserClient();
+    const { data: auth } = await supabase.auth.getUser();
+    const { error } = await supabase.from("listings").delete().eq("id", listing.id);
+    if (!error) {
+      await supabase.from("audit_logs").insert({
+        dealership_id: listing.dealership_id,
+        actor_user_id: auth.user?.id || null,
+        entity_type: "listing",
+        entity_id: listing.id,
+        action: "deleted",
+        before_data: listing,
+      });
+      router.push("/dashboard/saved-listings");
+      router.refresh();
+      return;
+    }
+    setMessage(error.message);
+  }
+
   function update(key: keyof ListingOutput, value: string) {
     setOutput({
       ...output,
@@ -102,7 +166,7 @@ export function ListingDetailEditor({ listing, images = [] }: { listing: SavedLi
       <CardHeader>
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <CardTitle>{output.title || [listing.year, listing.make, listing.model].filter(Boolean).join(" ")}</CardTitle>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Select value={status} onValueChange={(value) => value && setStatus(value as ListingStatus)}>
               <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -112,8 +176,18 @@ export function ListingDetailEditor({ listing, images = [] }: { listing: SavedLi
                 <SelectItem value="reviewed">Reviewed</SelectItem>
                 <SelectItem value="approved">Approved</SelectItem>
                 <SelectItem value="published">Published</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
               </SelectContent>
             </Select>
+            <Button variant="outline" className="border-white/10 bg-white/[.035]" onClick={() => archive(status !== "archived")}>
+              {status === "archived" ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+              {status === "archived" ? "Restore" : "Archive"}
+            </Button>
+            {canDelete && (
+              <Button variant="outline" className="border-red-500/25 bg-red-500/10 text-red-100 hover:bg-red-500/15" onClick={() => setDeleteOpen(true)}>
+                <Trash2 className="h-4 w-4" /> Delete
+              </Button>
+            )}
             <Button onClick={save} className="bg-primary hover:bg-red-700"><Save className="h-4 w-4" /> Save</Button>
           </div>
         </div>
@@ -135,11 +209,11 @@ export function ListingDetailEditor({ listing, images = [] }: { listing: SavedLi
           ))}
         </div>
         <div className="mb-5 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-          <div className="rounded-xl border border-white/10 bg-white/[.035] p-4">
+          <CollapsibleSection title="Optimization Plan" description={performance.recommendedAction}>
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <div className="font-semibold">Optimization Plan</div>
-                <div className="text-sm text-muted-foreground">{performance.recommendedAction}</div>
+                <div className="font-semibold">Next best action</div>
+                <div className="text-sm text-muted-foreground">Prioritized fixes for staff review.</div>
               </div>
               <Badge className={performance.listingScore >= 80 ? "bg-emerald-500/15 text-emerald-100" : "bg-amber-500/15 text-amber-100"}>
                 {performance.listingScore >= 80 ? "Ready" : "Needs work"}
@@ -161,9 +235,8 @@ export function ListingDetailEditor({ listing, images = [] }: { listing: SavedLi
                 </div>
               )}
             </div>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-white/[.035] p-4">
-            <div className="mb-3 font-semibold">Score Breakdown</div>
+          </CollapsibleSection>
+          <CollapsibleSection title="Score Breakdown" description="Completeness, SEO, conversion, platform fit, and risk safety.">
             <div className="space-y-3">
               {categoryScores.map(([label, value]) => (
                 <div key={label}>
@@ -177,7 +250,7 @@ export function ListingDetailEditor({ listing, images = [] }: { listing: SavedLi
                 </div>
               ))}
             </div>
-          </div>
+          </CollapsibleSection>
         </div>
         {!!images.length && (
           <div className="mb-5 grid gap-3 md:grid-cols-4">
@@ -211,22 +284,19 @@ export function ListingDetailEditor({ listing, images = [] }: { listing: SavedLi
           </div>
         )}
         <div className="mb-5 grid gap-4 xl:grid-cols-3">
-          <div className="rounded-xl border border-white/10 bg-white/[.035] p-4">
-            <div className="mb-3 font-semibold">Missing Facts</div>
+          <CollapsibleSection title="Missing Facts" defaultOpen={performance.missingFields.length > 0}>
             <div className="space-y-2 text-sm text-muted-foreground">
               {performance.missingFields.slice(0, 6).map((item) => <p key={item.id}>{item.label}: {item.detail}</p>)}
               {!performance.missingFields.length && <p className="text-emerald-100">Core vehicle facts look complete.</p>}
             </div>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-white/[.035] p-4">
-            <div className="mb-3 font-semibold">Risk Flags</div>
+          </CollapsibleSection>
+          <CollapsibleSection title="Risk Flags" defaultOpen={performance.riskFlags.length > 0}>
             <div className="space-y-2 text-sm text-muted-foreground">
               {performance.riskFlags.slice(0, 6).map((item) => <p key={item.id}>{item.label}: {item.detail}</p>)}
               {!performance.riskFlags.length && <p className="text-emerald-100">No unsupported high-risk claims detected.</p>}
             </div>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-white/[.035] p-4">
-            <div className="mb-3 font-semibold">Photo Checklist</div>
+          </CollapsibleSection>
+          <CollapsibleSection title="Photo Checklist" defaultOpen={performance.photoChecklist.some((item) => !item.complete)}>
             <div className="space-y-2 text-sm">
               {performance.photoChecklist.map((item) => (
                 <div key={item.id} className="flex items-start gap-2 text-muted-foreground">
@@ -235,7 +305,7 @@ export function ListingDetailEditor({ listing, images = [] }: { listing: SavedLi
                 </div>
               ))}
             </div>
-          </div>
+          </CollapsibleSection>
         </div>
         <Tabs defaultValue="facebookListing">
           <TabsList className="grid grid-cols-7">
@@ -257,6 +327,22 @@ export function ListingDetailEditor({ listing, images = [] }: { listing: SavedLi
             );
           })}
         </Tabs>
+        <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <AlertDialogContent className="border border-red-500/25 bg-[#0B0D10]">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this listing permanently?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Archiving is safer for sold or inactive inventory. Delete only if this record should be removed from the dealership library.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction className="bg-red-600 text-white hover:bg-red-500" onClick={deleteListing}>
+                Delete listing
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );

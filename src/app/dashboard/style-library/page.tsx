@@ -9,7 +9,7 @@ export default async function StyleLibraryPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
-  const { dealership } = await getDealershipContext(supabase, user.id);
+  const { dealership, member } = await getDealershipContext(supabase, user.id);
   if (!dealership) return <main className="p-6 text-sm text-muted-foreground">Set up a dealership first.</main>;
 
   const [{ data: profile }, { data: examples }] = await Promise.all([
@@ -29,6 +29,7 @@ export default async function StyleLibraryPage() {
         dealershipId={dealership.id}
         profile={profile as DealershipStyleProfile | null}
         examples={(examples || []) as never}
+        canEdit={Boolean(member && ["owner", "admin"].includes(member.role))}
       />
     </main>
   );

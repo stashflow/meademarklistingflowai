@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, Plus, Search } from "lucide-react";
+import { Menu, PanelLeftClose, PanelLeftOpen, Plus, Search } from "lucide-react";
 import { HowToUseButton } from "@/components/common/how-to-use-button";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { Badge } from "@/components/ui/badge";
@@ -15,16 +15,30 @@ export function Topbar({
   userEmail,
   isAdmin = false,
   role = null,
+  sidebarOpen = true,
+  onToggleSidebar,
 }: {
   dealershipName?: string | null;
   userEmail?: string | null;
   isAdmin?: boolean;
   role?: DealershipRole | null;
+  sidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
 }) {
   return (
     <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0B0D10]/88 backdrop-blur-xl">
       <div className="grid h-16 grid-cols-[minmax(0,1fr)_max-content] items-center gap-3 px-4 md:grid-cols-[minmax(0,1fr)_minmax(180px,520px)_max-content] md:gap-4 md:px-5">
         <div className="flex min-w-0 items-center gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onToggleSidebar}
+            className="hidden lg:inline-flex"
+            title={sidebarOpen ? "Close navigation" : "Open navigation"}
+          >
+            {sidebarOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
+          </Button>
           <Sheet>
             <SheetTrigger render={<Button variant="ghost" size="icon" className="lg:hidden" />}>
               <Menu className="h-5 w-5" />

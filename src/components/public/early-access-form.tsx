@@ -32,7 +32,7 @@ export function EarlyAccessForm({ compact = false }: { compact?: boolean }) {
       return;
     }
     setStatus("success");
-    setMessage("Thanks. Your early access request has been saved.");
+    setMessage("Thanks. Your message has been received.");
   }
 
   return (
@@ -56,12 +56,12 @@ export function EarlyAccessForm({ compact = false }: { compact?: boolean }) {
         </div>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="biggestChallenge">Biggest listing challenge</Label>
+        <Label htmlFor="biggestChallenge">How can we help?</Label>
         <Textarea
           id="biggestChallenge"
           name="biggestChallenge"
           required
-          placeholder="What slows your team down when preparing listings?"
+          placeholder="Tell us about your dealership and what you want to improve."
         />
       </div>
       {message && (
@@ -71,7 +71,7 @@ export function EarlyAccessForm({ compact = false }: { compact?: boolean }) {
       )}
       <Button type="submit" disabled={status === "loading"} className="w-full bg-primary hover:bg-red-700">
         {status === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-        Request access
+        Contact MeadeMark Labs
       </Button>
     </form>
   );

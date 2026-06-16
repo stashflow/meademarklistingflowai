@@ -17,6 +17,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const params = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const next = params.get("next") || "/dashboard";
 
   async function submit(formData: FormData) {
     setLoading(true);
@@ -40,12 +41,12 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
           password,
           options: {
             data: { full_name: fullName },
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
           },
         });
         if (error) throw error;
         if (data.session) {
-          router.push("/onboarding");
+          router.push(next === "/dashboard" ? "/onboarding" : next);
           router.refresh();
           return;
         }
@@ -53,7 +54,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        router.push(params.get("next") || "/dashboard");
+        router.push(next);
         router.refresh();
       }
     } catch (error) {
@@ -136,7 +137,10 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
             </form>
             <p className="mt-5 text-center text-sm text-muted-foreground">
               {mode === "signup" ? "Already have an account?" : "Need an account?"}{" "}
-              <Link href={mode === "signup" ? "/login" : "/signup"} className="text-white underline">
+              <Link
+                href={`${mode === "signup" ? "/login" : "/signup"}${next !== "/dashboard" ? `?next=${encodeURIComponent(next)}` : ""}`}
+                className="text-white underline"
+              >
                 {mode === "signup" ? "Log in" : "Sign up"}
               </Link>
             </p>

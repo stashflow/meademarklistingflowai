@@ -5,6 +5,7 @@ import { Clipboard, Link2, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { DealershipMember, JoinRequest } from "@/types/dealership";
 
@@ -21,6 +22,7 @@ export function TeamManager({
 }) {
   const [role, setRole] = useState("staff");
   const [inviteUrl, setInviteUrl] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -29,7 +31,7 @@ export function TeamManager({
     const response = await fetch("/api/invites/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ dealershipId, role, expiresInDays: 14 }),
+      body: JSON.stringify({ dealershipId, role, email: inviteEmail.trim() || undefined, expiresInDays: 14 }),
     });
     const payload = await response.json();
     setLoading(false);
@@ -38,7 +40,7 @@ export function TeamManager({
       return;
     }
     setInviteUrl(payload.url);
-    setMessage("Invite link created.");
+    setMessage(payload.message || "Invite link created.");
   }
 
   async function respond(requestId: string, action: "approve" | "reject") {
@@ -73,8 +75,15 @@ export function TeamManager({
           <CardHeader><CardTitle>Invite user</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Email sending is not configured. Generate invite links and share them manually.
+              Send a branded Supabase invite email and keep the shareable link as a backup.
             </p>
+            <Input
+              type="email"
+              value={inviteEmail}
+              onChange={(event) => setInviteEmail(event.target.value)}
+              placeholder="teammate@dealership.com"
+              disabled={!canManage}
+            />
             <Select value={role} onValueChange={(value) => value && setRole(value)} disabled={!canManage}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -84,7 +93,7 @@ export function TeamManager({
             </Select>
             <Button disabled={!canManage || loading} onClick={createInvite} className="bg-primary hover:bg-red-700">
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
-              Create invite link
+              {inviteEmail.trim() ? "Send invite" : "Create invite link"}
             </Button>
             {inviteUrl && (
               <div className="rounded-md border border-white/10 bg-white/5 p-3 text-sm">

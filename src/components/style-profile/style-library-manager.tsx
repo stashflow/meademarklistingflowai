@@ -14,14 +14,36 @@ export function StyleLibraryManager({
   dealershipId,
   profile,
   examples,
+  canEdit,
 }: {
   dealershipId: string;
   profile: DealershipStyleProfile | null;
   examples: Array<{ id: string; title: string; platform: string | null; notes: string | null; example_text: string }>;
+  canEdit: boolean;
 }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState(examples);
+  const [titleStyle, setTitleStyle] = useState(
+    profile?.formatting_rules?.titleStyle || "Year Make Model Trim with one concise, factual selling point",
+  );
+
+  async function saveTitleStyle() {
+    setLoading(true);
+    const supabase = createSupabaseBrowserClient();
+    const { error } = await supabase
+      .from("dealership_style_profiles")
+      .update({
+        formatting_rules: {
+          ...(profile?.formatting_rules || {}),
+          titleStyle: titleStyle.trim(),
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("dealership_id", dealershipId);
+    setLoading(false);
+    setMessage(error ? error.message : "Listing title style saved.");
+  }
 
   async function addExample(formData: FormData) {
     setLoading(true);
@@ -78,6 +100,22 @@ export function StyleLibraryManager({
           <div className="rounded-md border border-white/10 bg-white/5 p-4">
             <div className="text-xs uppercase text-muted-foreground">Voice</div>
             <p className="mt-2">{profile?.voice_summary || "Not analyzed"}</p>
+          </div>
+          <div className="space-y-2 rounded-md border border-white/10 bg-white/5 p-4">
+            <Label htmlFor="title-style">Listing title style</Label>
+            <Input
+              id="title-style"
+              value={titleStyle}
+              onChange={(event) => setTitleStyle(event.target.value)}
+              placeholder="Example: Year Make Model Trim | Main selling point"
+              disabled={!canEdit}
+            />
+            <p className="text-xs text-muted-foreground">
+              Applied to the title generated for each platform. Keep it factual and avoid unsupported claims.
+            </p>
+            <Button type="button" size="sm" variant="outline" onClick={saveTitleStyle} disabled={!canEdit || loading || !titleStyle.trim()} className="border-white/10 bg-white/[.035]">
+              Save title style
+            </Button>
           </div>
           <Button onClick={reanalyze} disabled={loading || rows.length === 0} className="bg-primary hover:bg-red-700">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}

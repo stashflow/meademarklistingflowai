@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getDealershipContext } from "@/lib/permissions";
 import { checkRateLimit, rateLimitedResponse } from "@/lib/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { generateFillInQuestions } from "@/lib/generation/fill-in";
+import { localFillInQuestions } from "@/lib/generation/fill-in";
 import { vehicleInputSchema } from "@/lib/validators/listing";
 
 const schema = z.object({
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     });
     if (!rateLimit.allowed) return rateLimitedResponse;
 
-    const questions = await generateFillInQuestions(parsed.data.vehicle);
+    const questions = localFillInQuestions(parsed.data.vehicle);
     return NextResponse.json({ questions });
   } catch (error) {
     return NextResponse.json(

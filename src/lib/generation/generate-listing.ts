@@ -49,6 +49,11 @@ export async function generateVehicleListing(
 }
 
 Generation rules:
+- Return plain text only inside every JSON string. Never use Markdown headings, bold, italics, code fences, tables, or link syntax.
+- Use readable paragraphs and plain-text bullet characters only where a platform benefits from scanning.
+- Every platform output must begin with its own clear title line.
+- Main description length targets: short 90-140 words, standard 180-280 words, detailed 300-450 words. Do not pad with invented facts.
+- Standard and detailed listings should use all supported selling detail available in the request, not stop after a short summary.
 - Never invent specs.
 - VIN decoded fields may be used only as provided in the request. Do not add specs beyond decoded or staff-entered fields.
 - Vehicle intelligence, safety, recall, and value notes may be used only when supplied in the request. NHTSA recall lookup does not prove whether recalls are open or completed.
@@ -65,6 +70,8 @@ Generation rules:
 - Avoid overhyped or scammy phrases.
 - Include no more than 4 concise review warnings.
 - Warn only about missing details that materially affect buyer understanding or a claim already present in the copy.
+- If trim is supplied, do not warn that trim is unconfirmed.
+- Do not warn about title, accidents, ownership, warranty, financing, or service history merely because a field is absent. Warn only if public copy actually contains an unsupported claim.
 - Do not return an exhaustive list of every blank optional field.
 - Encourage human review before publishing.
 
@@ -86,7 +93,47 @@ ${request.preferences.useStyleProfile ? JSON.stringify(styleProfile, null, 2) : 
 
       const content = completion.choices[0]?.message?.content;
       if (!content) throw new Error("Listing generation returned no content.");
-      return parseStrictJson<ListingOutput>(content);
+      const output = parseStrictJson<ListingOutput>(content);
+      const clean = (value: string) => value
+        .replace(/\*\*(.*?)\*\*/g, "$1")
+        .replace(/__(.*?)__/g, "$1")
+        .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+        .replace(/^\s*[-*]\s+/gm, "• ")
+        .replace(/`+/g, "")
+        .trim();
+      const textKeys: Array<keyof ListingOutput> = [
+        "title",
+        "shortTitle",
+        "facebookListing",
+        "carGurusListing",
+        "websiteDescription",
+        "craigslistListing",
+        "autoTraderStyleDescription",
+        "conditionNote",
+        "seoTitle",
+        "seoMetaDescription",
+        "salesAngle",
+        "disclaimer",
+      ];
+      textKeys.forEach((key) => {
+        const value = output[key];
+        if (typeof value === "string") {
+          (output as unknown as Record<string, unknown>)[key] = clean(value);
+        }
+      });
+      output.highlights = (output.highlights || []).map(clean);
+      output.features = (output.features || []).map(clean);
+      output.reviewWarnings = (output.reviewWarnings || []).map(clean);
+      const ensurePlatformTitle = (body: string, platform: "facebook" | "cargurus" | "website") => {
+        const title = clean(output.copyBlocks?.[platform]?.title || output.title || output.shortTitle || "");
+        const cleanedBody = clean(body || "");
+        if (!title || cleanedBody.toLowerCase().startsWith(title.toLowerCase())) return cleanedBody;
+        return `${title}\n\n${cleanedBody}`.trim();
+      };
+      output.facebookListing = ensurePlatformTitle(output.facebookListing, "facebook");
+      output.carGurusListing = ensurePlatformTitle(output.carGurusListing, "cargurus");
+      output.websiteDescription = ensurePlatformTitle(output.websiteDescription, "website");
+      return output;
     } catch (error) {
       lastError = error;
     }

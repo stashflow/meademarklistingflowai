@@ -4,7 +4,8 @@ export type ListingStatus =
   | "changes_requested"
   | "reviewed"
   | "approved"
-  | "published";
+  | "published"
+  | "archived";
 
 export type RiskLevel = "low" | "medium" | "high" | "unknown";
 
