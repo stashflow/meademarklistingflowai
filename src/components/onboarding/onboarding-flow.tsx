@@ -372,7 +372,7 @@ export function OnboardingFlow() {
             <Badge className="mb-3 border-red-500/30 bg-red-500/10 text-red-100">
               Step {step} of 5 · {activeStepMeta?.[0]}
             </Badge>
-            <h1 className="font-display text-4xl leading-tight">Set up ListingFlow AI</h1>
+            <h1 className="font-display text-4xl leading-tight">Set up ListingFlow</h1>
             <p className="mt-2 text-sm text-muted-foreground">{activeStepMeta?.[1]}</p>
           </div>
           <div className="w-full md:w-64">

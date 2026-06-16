@@ -1,4 +1,4 @@
-# ListingFlow AI Supabase Auth Email Templates
+# ListingFlow Supabase Auth Email Templates
 
 Copy each HTML file into the matching Supabase Auth email template:
 
@@ -12,7 +12,7 @@ Copy each HTML file into the matching Supabase Auth email template:
 Recommended sender:
 
 ```text
-ListingFlow AI <no-reply@auth.meademarklabs.com>
+ListingFlow <no-reply@auth.meademarklabs.com>
 ```
 
 Use custom SMTP with SPF, DKIM, and DMARC before sending production auth emails.

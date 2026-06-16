@@ -22,7 +22,7 @@ export async function sendJoinRequestNotificationEmail(notification: JoinRequest
   ].filter(Boolean);
 
   return sendResendEmail({
-    from: "ListingFlow AI <no-reply@listingflow.ai>",
+    from: "ListingFlow <no-reply@listingflow.ai>",
     to: notification.recipientEmails,
     subject,
     html: `

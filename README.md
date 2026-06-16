@@ -1,6 +1,6 @@
-# ListingFlow AI
+# ListingFlow
 
-ListingFlow AI by MeadeMark Labs is a B2B SaaS MVP for dealerships that need clean, accurate, dealer-ready vehicle listings. It helps staff turn VINs, decoded vehicle details, condition notes, selling points, and dealership style preferences into platform-ready copy while keeping humans in control.
+ListingFlow by MeadeMark Labs is a B2B SaaS MVP for dealerships that need clean, accurate, dealer-ready vehicle listings. It helps staff turn VINs, decoded vehicle details, condition notes, selling points, and dealership style preferences into platform-ready copy while keeping humans in control.
 
 The MVP includes account auth, dealership workspaces, onboarding, style learning, listing generation, saved listings, team invites, join requests, trial generation limits, rate limiting, and Stripe billing.
 
@@ -70,7 +70,7 @@ OPENAI_RESEARCH_MODEL=gpt-4o-mini
 Recommended auth sender:
 
 ```text
-ListingFlow AI <no-reply@auth.meademarklabs.com>
+ListingFlow <no-reply@auth.meademarklabs.com>
 ```
 
 Use custom SMTP with SPF, DKIM, and DMARC before production auth emails.

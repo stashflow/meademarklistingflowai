@@ -56,7 +56,7 @@ export function ListingFlowLoader({
           <div className="absolute bottom-2 left-9 h-6 w-6 rounded-full border-4 border-[#050608] bg-white/12" />
           <div className="absolute bottom-2 right-9 h-6 w-6 rounded-full border-4 border-[#050608] bg-white/12" />
           <div className="relative z-10 mt-3 h-16 w-16 overflow-hidden rounded-xl border border-white/10 bg-[#0B0D10] shadow-[0_0_40px_rgba(220,38,38,.18)]">
-            <Image src="/brand/lf-favicon.png" alt="ListingFlow AI" fill sizes="64px" className="object-cover" priority />
+            <Image src="/brand/lf-favicon.png" alt="ListingFlow" fill sizes="64px" className="object-cover" priority />
           </div>
         </div>
         {(label || detail) && <span className="sr-only">{[label, detail].filter(Boolean).join(". ")}</span>}

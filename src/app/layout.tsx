@@ -13,7 +13,7 @@ const displayFont = Barlow_Condensed({
 });
 
 export const metadata: Metadata = {
-  title: "ListingFlow AI | MeadeMark Labs",
+  title: "ListingFlow | MeadeMark Labs",
   description:
     "Dealer-ready vehicle listings generated from real vehicle details, dealership style, and staff review.",
   icons: {

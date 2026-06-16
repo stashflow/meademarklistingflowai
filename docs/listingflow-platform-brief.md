@@ -1,8 +1,8 @@
-# ListingFlow AI Platform Upgrade Brief
+# ListingFlow Platform Upgrade Brief
 
 ## Strategic Shift
 
-Upgrade ListingFlow AI from an "AI listing writer" into an **inventory performance, merchandising, and advertising-risk platform** for independent dealerships.
+Upgrade ListingFlow from an "AI listing writer" into an **inventory performance, merchandising, and advertising-risk platform** for independent dealerships.
 
 ListingFlow should feel like software that helps dealers:
 

@@ -78,7 +78,7 @@ export default function LandingPage() {
             Dealer-ready vehicle listings in seconds.
           </h1>
           <p className="mt-7 max-w-2xl text-base leading-8 text-zinc-300 md:text-lg">
-            ListingFlow AI by MeadeMark Labs helps dealerships generate cleaner listing copy from
+            ListingFlow by MeadeMark Labs helps dealerships generate cleaner listing copy from
             VINs, confirmed vehicle details, and staff notes, while keeping staff in control.
           </p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
@@ -107,7 +107,7 @@ export default function LandingPage() {
           <div className="relative aspect-[16/7] border-b border-white/10 bg-[#10151F]">
             <Image
               src="/brand/listingflow-fixed.png"
-              alt="ListingFlow AI by MeadeMark Labs"
+              alt="ListingFlow by MeadeMark Labs"
               fill
               sizes="(min-width: 1024px) 560px, 100vw"
               className="object-cover"

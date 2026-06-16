@@ -84,7 +84,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
             <CardDescription>
               {mode === "signup"
                 ? "Create an account for your dealership workspace."
-                : "Log in to continue to ListingFlow AI."}
+                : "Log in to continue to ListingFlow."}
             </CardDescription>
           </CardHeader>
           <CardContent>
